@@ -1,0 +1,139 @@
+---
+title: "Scratch_Main"
+author: "Leroy_Bondhus"
+date: "February 11, 2020"
+output: html_document
+---
+
+###   
+###   This file is temporary. Use this file to build, test, generalize, run dmrscaler method and its supporting files
+###   Functions should be built to be general and tested here
+###
+
+```{r}
+library("devtools")
+library(roxygen2)
+setwd("/home/lbondhus/Desktop/PROJECTS/dmrscaler")
+
+library(minfi)
+library(doParallel)
+library(rlang)
+registerDoParallel()
+
+document()
+install("../dmrscaler")
+```
+
+
+```{r}
+load(file="/home/lbondhus/Desktop/PROJECTS/KAT6A_DNA_methylation_project/intermediate_data/GRset.funnorm_NEW.Rdata")
+pdat<- pData(GRset.funnorm)
+B<-getBeta(GRset.funnorm)
+locs<-mapToGenome(GRset.funnorm)
+locs<-locs@rowRanges
+
+Bsmall<-B #[1:1e5,]
+locsmall <- locs #[1:1e5,]
+locsmall<-as.data.frame(cbind(as.character(locsmall@ranges@NAMES),as.numeric(as.character(locsmall@ranges@start)),as.character(locsmall@seqnames)))
+ colnames(locsmall)<-c("names", "pos", "chr") 
+ 
+data<-data.frame(row.names = locsmall$names )
+data$chr <- locsmall$chr 
+data$pos <- locsmall$pos
+
+```
+
+```{r}
+rim<-dmrscaler::generate_rand_index_matrix(num_controls = length( which(pdat$Sample_Group=="CONTROL" & !grepl("-2",pdat$Sample_Name))), 
+                                           num_cases = length( which(pdat$Sample_Group=="Patient" & !grepl("-2",pdat$Sample_Name))),
+                                           num_permutations = 40)
+mrp<-dmrscaler::run_MWW_rand_permutation(index_matrix = rim, Beta=Bsmall, num_permutations = 40)
+mrp<- -log10(mrp)
+mwr<-dmrscaler::run_MWW(control_indices = which(pdat$Sample_Group=="CONTROL" & !grepl("-2",pdat$Sample_Name)),
+                        case_indices = which(pdat$Sample_Group=="Patient" & !grepl("-2",pdat$Sample_Name)), 
+                        Beta = Bsmall)
+mwr<- -log10(mwr)
+fdt<-dmrscaler::write_FDR_table(real_table = mwr, rand_table = mrp)
+
+fdrscaler<-dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt, MWW_FDR_threshold = 0.1)
+
+cltable <- dmrscaler::write_CLT_lookup_table(num_reps = 1e5, data_to_sample = mwr$p_val, FDR_scaler = fdrscaler)
+
+
+data<-data.frame(row.names = locsmall$names )
+data$chr <- locsmall$chr 
+data$pos <- locsmall$pos
+data$scoring_value <- mwr$p_val
+
+### this is the part that will run in tandem or parallel
+nn <- dmrscaler::n_nearest_window_scoring_func(indat = data, n_nearest = 4, step_size = 2, FDR = fdrscaler)
+signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable)
+signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
+
+
+### 
+layer_sizes <- c(4,8,16,32,64)
+
+layers<-list()
+for(i in 1:length(layer_sizes)){
+  print(paste("layer", i, sep="_"))
+  
+  nn_step_fraction = 2 
+  nn_step_size <- floor(layer_sizes[i] / nn_step_fraction)
+
+  nn <- dmrscaler::n_nearest_window_scoring_func(indat = data, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
+  
+  signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable , quants_significance_cutoff = "0.99995" )
+  signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
+  
+  layers[[i]]<-signn
+}
+
+names(layers)<-paste("layer", layer_sizes, sep="_")
+for(i in 1:length(layers)){
+  temp<-as.data.frame(layers[[i]][[1]])
+  for(j in 2:length(layers[[i]])){
+    temp<-rbind(temp, layers[[i]][[j]])
+  }
+  layers[[i]]<-temp
+}
+
+
+```
+
+
+
+```{r}
+
+atomic_layer <- data
+for(i in 1:length(layers)){
+    for(k in 1:length(layers[[i]]$start_pos)){
+      layers[[i]]$start_index[k]<-which(atomic_layer$pos==layers[[i]]$start_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
+      layers[[i]]$stop_index[k]<-which(atomic_layer$pos==layers[[i]]$stop_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
+    }
+}
+
+built_layers <- list()
+built_layers[[1]] <- in_layer_merge(dmrs = layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+for(i in 2:length(layers)){
+  print(i)
+  built_layers[[i]] <- build_next_layer(prev_layer = built_layers[[i-1]], 
+                                  windows_to_layer = layers[[i]], 
+                                  CG_table = atomic_layer,
+                                  FDR_scaler=fdrscaler,
+                                  lookup_table = cltable)
+  print("done with one")
+}
+
+```
+
+
+```{r}
+
+
+```
+
+
+
+
+
