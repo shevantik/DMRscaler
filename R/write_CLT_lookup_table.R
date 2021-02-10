@@ -16,7 +16,7 @@
 ### (NOT DONE YET: ADD -1 as score for 0th percentile, ADD Inf as Score for 100th percentile)
 write_CLT_lookup_table <- function( num_reps, data_to_sample, FDR_scaler, clt_numCGs = c(2,5,10,25,50,100, 150, 200, 250, 1000),
                                     quants=quants<-data.frame(row.names=c(0,0.5,0.75,0.9,0.95,0.99, 0.999, 0.9995, 0.9999, 0.99995, 0.99999, 1))
-                                    ){
+){
   # clt_numCGs <-c(2,5,10,25,50,100, 150, 200, 250, 1000) ### ADD INFINITY ROW!!!! COPY LAST ROW FOR INFINITY ROW!!!
   clt_time_start<-timestamp()
   numCores<-getDoParWorkers()
@@ -24,14 +24,14 @@ write_CLT_lookup_table <- function( num_reps, data_to_sample, FDR_scaler, clt_nu
 
   for(i in 1:length(clt_numCGs)){
 
-    print(clt_numCGs[i]) ######
+    #print(clt_numCGs[i]) ######
     noexport=c("")
     export=c("clt")
     clt<-foreach(j=1:numCores, .noexport = noexport, .export = export, .combine = 'c' ) %dopar% {
-      print("hello")
+      #print("hello")
       clt <- rep(-1,perCore)
       for(k in 1:perCore){
-        print(k)
+       # print(k)
         temp_sample<-base::sample(data_to_sample, clt_numCGs[i] )
         clt[k]<-Score_CpG_bin(numCG = length(temp_sample), CG_scores = temp_sample, FDR_scaler = FDR_scaler)
       }

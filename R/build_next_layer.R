@@ -34,6 +34,7 @@ build_next_layer<-function(prev_layer, windows_to_layer, CG_table, lookup_table,
 
 
   prev_unchanged <- prev_layer[-bnl_which_overlap(window = kept_expanded, prev_layer=prev_layer ),]  ## which in the previous layer don't overlap anything, note minus sign
+  if(length(bnl_which_overlap(window = kept_expanded, prev_layer=prev_layer ))==0 ){ prev_unchanged <- prev_layer} ## error correction for handling cases where nothing overlaps
 
   kept_expanded <- rbind(kept_expanded, prev_unchanged)
   kept_expanded <- kept_expanded[with(kept_expanded, order(chr, start_pos)),]
