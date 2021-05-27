@@ -13,7 +13,7 @@ output: html_document
 ```{r}
 library("devtools")
 library(roxygen2)
-setwd("/home/lbondhus/Desktop/PROJECTS/dmrscaler")
+setwd("C:/Users/LeroyBondhus/Desktop/PROJECTS/dmrscaler")
 
 library(minfi)
 library(doParallel)
@@ -22,6 +22,7 @@ registerDoParallel()
 
 document()
 install("../dmrscaler")
+library(GenomicRanges)
 ```
 
 ```{r set up dmrscaler function }
