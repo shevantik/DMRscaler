@@ -3,26 +3,62 @@ title: "Scratch_User_Guide"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+## Vignette set up
+
+## Download data from GSE74432 
+
+```{r}
+library(GEOquery)
+library(minfi)
+## NOTE: 170.2 MB ## this is sufficient to get B matrix (only 787731/835424 CGs from minfi ?)
+gse <- getGEO("GSE149960", GSEMatrix = TRUE)
+phen <- gse$GSE149960_series_matrix.txt.gz@phenoData@data
+## dat is Beta matrix here
+dat <- gse$GSE149960_series_matrix.txt.gz@assayData$exprs
+locs <- gse$GSE149960_series_matrix.txt.gz@
+  
+## Check if dat is same as matrix with Minfi processing
+## Want raw idats
+
+getGEOSuppFiles("GSE149960")
+untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
+head(list.files("GSE149960/idat", pattern = "idat"))
+idatFiles <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
+sapply(idatFiles, gunzip, overwrite = TRUE)
+
+###  Reading of idat files done with minfi library ###
+idats_dir<-"GSE149960/idat"
+idats_files<-list.files(path=idats_dir, pattern = "*.idat")
+targets <- unlist(strsplit(list.files("GSE149960/idat", pattern = "idat"), split="_[RG][er][dn]"))
+targets <- targets[which(targets != ".idat.gz")]
+RGSet <- read.metharray.exp(base = idats_dir)
+GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet)
+snps <- getSnpInfo(object = GRset.funnorm)
+GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm(snps)
+rm(idats_dir, idats_files, targets)
+
+
+#### GSE dat appears to be same as minfi processed data
+hist(B[rownames(dat),]-dat[])
+
+
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Set up for dmrscaler
+```{r}
+pdat <- phen
+controls <- grep("control",pdat$title)
+cases <- grep("hgps", pdat$title)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+locs <- getLocations(GRset.funnorm)
+locs <- data.frame("names"=locs@ranges@NAMES, "pos"=locs@ranges@start, "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
+B <- getBeta(GRset.funnorm)
 
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
