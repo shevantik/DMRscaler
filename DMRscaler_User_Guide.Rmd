@@ -33,7 +33,7 @@ gse <- getGEO(gse_id, GSEMatrix = TRUE)
 phen <- gse[[1]]@phenoData@data
 
 getGEOSuppFiles(gse_id)
-idats_dir <- paste(gse_id,"idat", sep = "/")
+idats_dir<-paste(g"GSE149960/idat"
 untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
 head(list.files("GSE149960/idat", pattern = "idat"))
 
@@ -53,7 +53,7 @@ rm(idats_dir, idats_files, targets)
 
 
 #### GSE dat appears to be same as minfi processed data
-hist(B[rownames(dat),]-dat[])
+#hist(B[rownames(dat),]-dat[])
 
 
 ```

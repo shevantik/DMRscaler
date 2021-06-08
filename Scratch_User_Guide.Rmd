@@ -15,10 +15,9 @@ library(minfi)
 gse <- getGEO("GSE149960", GSEMatrix = TRUE)
 phen <- gse$GSE149960_series_matrix.txt.gz@phenoData@data
 ## dat is Beta matrix here
-dat <- gse$GSE149960_series_matrix.txt.gz@assayData$exprs
-locs <- gse$GSE149960_series_matrix.txt.gz@
-  
-## Check if dat is same as matrix with Minfi processing
+# dat <- gse$GSE149960_series_matrix.txt.gz@assayData$exprs
+
+## Check if dat is same as matrix with Minfi processing - it's not
 ## Want raw idats
 
 getGEOSuppFiles("GSE149960")
@@ -31,7 +30,7 @@ sapply(idatFiles, gunzip, overwrite = TRUE)
 idats_dir<-"GSE149960/idat"
 idats_files<-list.files(path=idats_dir, pattern = "*.idat")
 targets <- unlist(strsplit(list.files("GSE149960/idat", pattern = "idat"), split="_[RG][er][dn]"))
-targets <- targets[which(targets != ".idat.gz")]
+targets <- targets[grep("idat", targets,invert = TRUE)]
 RGSet <- read.metharray.exp(base = idats_dir)
 GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet)
 snps <- getSnpInfo(object = GRset.funnorm)
@@ -39,18 +38,17 @@ GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm
 rm(idats_dir, idats_files, targets)
 
 
-#### GSE dat appears to be same as minfi processed data
-hist(B[rownames(dat),]-dat[])
-
+#### GSE dat appears to be same as minfi processed data, except GSE dat is missing ~100k probes
+## hist(B[rownames(dat),]-dat[])
 
 ```
 
 
 ## Set up for dmrscaler
 ```{r}
-pdat <- phen
-controls <- grep("control",pdat$title)
-cases <- grep("hgps", pdat$title)
+
+controls <- grep("control",phen$title)
+cases <- grep("hgps", phen$title)
 
 locs <- getLocations(GRset.funnorm)
 locs <- data.frame("names"=locs@ranges@NAMES, "pos"=locs@ranges@start, "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
@@ -60,5 +58,99 @@ B <- getBeta(GRset.funnorm)
 
 
 
+```{r set up dmrscaler function }
 
+library(doParallel)
+library(foreach)
+registerDoParallel()
+library("devtools")
+library(roxygen2)
+library(rlang)
+library("dplyr")
+
+setwd("C:/Users/LeroyBondhus/Desktop/PROJECTS/dmrscaler")
+document()
+install("../dmrscaler")
+
+      ############################     run everything         #########################
+      num_perm <- 10
+      clt_reps <- 1e4
+      
+      rim <- dmrscaler::generate_rand_index_matrix(num_controls = length(controls),
+                                                   num_cases = length(cases),
+                                                   num_permutations = num_perm)
+      mrp <- dmrscaler::run_MWW_rand_permutation(index_matrix = rim, 
+                                                 Beta = B,
+                                                 num_permutations = num_perm)
+      mrp <- -log10(mrp)
+      mwr <- dmrscaler::run_MWW(control_indices = controls ,
+                                case_indices = cases ,
+                                Beta = B)
+      mwr <- -log10(mwr)
+      fdt <- dmrscaler::write_FDR_table(real_table = mwr,
+                                        rand_table = mrp)
+      
+      fdrscaler <- dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt,
+                                             MWW_FDR_threshold = 0.1)
+      if(is.na(fdrscaler)){fdrscaler <- 1}
+      ## needs
+      cltable <- dmrscaler::write_CLT_lookup_table(num_reps = clt_reps ,
+                                                   data_to_sample = mwr$p_val,
+                                                   FDR_scaler = fdrscaler,
+                                                   clt_numCGs = c(2, 5, 10, 25, 50))
+      ## data <-  names, chr, pos,  scoring_value (-log10pval)
+    #  data <- controlCGlocs
+      data <- locs[,1:3]
+      data$chr <- as.factor(data$chr)
+      colnames(data)<-c("names","pos","chr")
+      data$scoring_values <- mwr$p_val
+    #  data$chr <- droplevels(data$chr)
+      layer_sizes <- c(4,8,16,32,64)
+      layers<-list()
+      for(i in 1:length(layer_sizes)){
+        print(paste("layer", i, sep="_"))
+        nn_step_fraction = 2 
+        nn_step_size <- floor(layer_sizes[i] / nn_step_fraction)
+        nn <- dmrscaler::n_nearest_window_scoring_func(indat = data, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
+        signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable , quants_significance_cutoff = "0.9999" )
+        signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
+        
+        ## multiple chromosomes each a list, coerce to single dataframe
+        signn <- bind_rows(signn)
+        ## 
+        
+        layers[[i]]<-signn
+      }
+      
+      layers_TEMP_BACKUP <- layers
+      layers<-layers_TEMP_BACKUP
+      
+      names(layers)<-paste("layer", layer_sizes, sep="_")
+      
+      
+      atomic_layer <- data
+      for(i in 1:length(layers)){
+        for(k in 1:length(layers[[i]]$start_pos)){
+          layers[[i]]$start_index[k]<-which(atomic_layer$pos==layers[[i]]$start_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
+          layers[[i]]$stop_index[k]<-which(atomic_layer$pos==layers[[i]]$stop_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
+        }
+      }
+      built_layers <- list()
+      built_layers[[1]] <- in_layer_merge(dmrs = layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+      built_layers[[1]] <- in_layer_merge(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+      built_layers[[1]] <- trim_layer(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
+      for(i in 2:length(layers)){
+        #print(i)
+        built_layers[[i]] <- build_next_layer(prev_layer = built_layers[[i-1]], 
+                                              windows_to_layer = layers[[i]], 
+                                              CG_table = atomic_layer,
+                                              FDR_scaler=fdrscaler,
+                                              lookup_table = cltable)
+      built_layers[[i]] <- in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+      built_layers[[i]] <- in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+      built_layers[[i]] <- trim_layer(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
+       # print("done with one")
+      }
+
+```
 
