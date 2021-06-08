@@ -21,45 +21,63 @@ DMRscalar
 
 
 ## Example Dataset Setup
-Here we'll use a relatively small dataset from GEO, 
-
-```{r}
+We will use data from GSE149960 from (REFERENCE) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
+### Note: This vignette imports files from the Gene Expression Omnibus. (TODO: set cleanup option to remove files)
+```{r get_data }
 library(GEOquery)
-library(minfi)
+
+## Change this line to change base directory where files will be stored
+base_dir <- getwd()
 
 ## NOTE: 170.2 MB 
 gse_id <- "GSE149960"
 gse <- getGEO(gse_id, GSEMatrix = TRUE)
-phen <- gse[[1]]@phenoData@data
+phen <- gse[[1]]@phenoData@data; rm(gse)
+## NOTE: 214.6 MB, saves files in base_dir/GSE149960
+geo_file <- getGEOSuppFiles(gse_id, baseDir = base_dir)
+geo_file <- rownames(geo_file)
 
-getGEOSuppFiles(gse_id)
-idats_dir<-paste(g"GSE149960/idat"
-untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
-head(list.files("GSE149960/idat", pattern = "idat"))
+idat_dir <- paste(base_dir, gse_id, "idat", sep = "/")
+untar(geo_file, exdir = idat_dir)
+file.remove(geo_file) ## delete the *.tar file
 
-idatFiles <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
-sapply(idatFiles, gunzip, overwrite = TRUE)
-
-###  Reading of idat files done with minfi library ###
-idats_dir<-"GSE149960/idat"
-idats_files<-list.files(path=idats_dir, pattern = "*.idat")
-targets <- unlist(strsplit(list.files("GSE149960/idat", pattern = "idat"), split="_[RG][er][dn]"))
-targets <- targets[which(targets != ".idat.gz")]
-RGSet <- read.metharray.exp(base = idats_dir)
-GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet)
-snps <- getSnpInfo(object = GRset.funnorm)
-GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm(snps)
-rm(idats_dir, idats_files, targets)
-
-
-#### GSE dat appears to be same as minfi processed data
-#hist(B[rownames(dat),]-dat[])
-
+idat_files <- list.files(idat_dir, full = TRUE)
+sapply(idat_files, gunzip, overwrite = TRUE)  ## unzip the files
 
 ```
 
 
+###  Preprocessing idat files with minfi 
+```{r preprocessing_data}
+library(minfi)
+RGSet <- read.metharray.exp(base = idat_dir)
+GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet) ## This can take a few minutes
+snps <- getSnpInfo(object = GRset.funnorm)
+GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm(snps)
+#rm(idats_dir, idats_files, targets)
 
+```
+
+
+```{r data_setup}
+controls <- grep("control",phen$title)
+cases <- grep("hgps", phen$title)
+
+locs <- getLocations(GRset.funnorm)
+locs <- data.frame("names"=locs@ranges@NAMES,
+                   "pos"=locs@ranges@start,
+                   "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
+B <- getBeta(GRset.funnorm)
+
+```
+
+
+### install dmrscaler (BIOCONDUCTOR SUBMISSION IN PROGRESS)
+```{r}
+
+
+
+```
 
 
 

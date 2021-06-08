@@ -61,12 +61,12 @@ B <- getBeta(GRset.funnorm)
 ```{r set up dmrscaler function }
 
 library(doParallel)
-library(foreach)
-registerDoParallel()
 library("devtools")
 library(roxygen2)
 library(rlang)
 library("dplyr")
+library(foreach)
+registerDoParallel()
 
 setwd("C:/Users/LeroyBondhus/Desktop/PROJECTS/dmrscaler")
 document()
