@@ -16,8 +16,16 @@ knitr::opts_chunk$set(
 )
 ```
 
+
 ## Summary
-DMRscalar
+dmrscaler
+
+
+### install dmrscaler (BIOCONDUCTOR SUBMISSION IN PROGRESS)
+```{r}
+library("devtools")
+install("../dmrscaler")  ## takes ~10 min (why?)
+```
 
 
 ## Example Dataset Setup
@@ -72,13 +80,113 @@ B <- getBeta(GRset.funnorm)
 ```
 
 
-### install dmrscaler (BIOCONDUCTOR SUBMISSION IN PROGRESS)
 ```{r}
+
+
+library(doParallel)
+library("devtools")
+library(roxygen2)
+library(rlang)
+library("dplyr")
+library(foreach)
+registerDoParallel()
+
+```
+
+
+
+```{r}
+library(foreach)
+registerDoParallel() ## Permutations can be time intensive, parallelization helps
+
+num_perm <- 10
+clt_reps <- 5e4
+
+rim <- dmrscaler::generate_rand_index_matrix(num_controls = length(controls),
+                                             num_cases = length(cases),
+                                             num_permutations = num_perm)
+mrp <- dmrscaler::run_MWW_rand_permutation(index_matrix = rim, 
+                                           Beta = B,
+                                           num_permutations = num_perm)
+mrp <- -log10(mrp)
+mwr <- dmrscaler::run_MWW(control_indices = controls ,
+                          case_indices = cases ,
+                          Beta = B)
+mwr <- -log10(mwr)
+fdt <- dmrscaler::write_FDR_table(real_table = mwr,
+                                  rand_table = mrp)
+
+fdrscaler <- dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt,
+                                       MWW_FDR_threshold = 0.1)
+if(is.na(fdrscaler)){fdrscaler <- 1}
+
+cltable <- dmrscaler::write_CLT_lookup_table(num_reps = clt_reps ,
+                                             data_to_sample = mwr$p_val,
+                                             FDR_scaler = fdrscaler,
+                                             clt_numCGs = c(2, 5, 10, 25, 50))
+
+```
+
+
+```{r}
+
+locs$chr <- as.factor(locs$chr)
+locs$scoring_values <- mwr$p_val
+
+## 
+layer_sizes <- c(4,8,16,32,64)
+layers<-list()
+
+
+for(i in 1:length(layer_sizes)){
+  print(paste("layer", i, sep="_"))
+  nn_step_fraction = 2  ## 
+  nn_step_size <- max( floor(layer_sizes[i] / nn_step_fraction), 1) 
+  nn <- dmrscaler::n_nearest_window_scoring_func(indat = locs, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
+  signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=locs, quants=cltable , quants_significance_cutoff = "0.9999" )
+  signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
+  
+  ## multiple chromosomes each a list, coerce to single dataframe
+  signn <- bind_rows(signn)
+  layers[[i]]<-signn
+}
+
+
+names(layers)<-paste("layer", layer_sizes, sep="_")
+
+
+atomic_layer <- data
+for(i in 1:length(layers)){
+  for(k in 1:length(layers[[i]]$start_pos)){
+    layers[[i]]$start_index[k]<-which(atomic_layer$pos==layers[[i]]$start_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
+    layers[[i]]$stop_index[k]<-which(atomic_layer$pos==layers[[i]]$stop_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
+  }
+}
+built_layers <- list()
+built_layers[[1]] <- dmrscaler::in_layer_merge(dmrs = layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+built_layers[[1]] <- dmrscaler::in_layer_merge(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+built_layers[[1]] <- dmrscaler::trim_layer(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
+for(i in 2:length(layers)){
+  #print(i)
+  built_layers[[i]] <- dmrscaler::build_next_layer(prev_layer = built_layers[[i-1]], 
+                                        windows_to_layer = layers[[i]], 
+                                        CG_table = atomic_layer,
+                                        FDR_scaler=fdrscaler,
+                                        lookup_table = cltable)
+  built_layers[[i]] <- dmrscaler::in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+  temp <- dmrscaler::in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+  while(!identical(built_layers[[i]], temp)){
+    built_layers[[i]] <- temp
+    temp <- dmrscaler::in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
+  }
+
+built_layers[[i]] <- dmrscaler::trim_layer(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
+ # print("done with one")
+}
 
 
 
 ```
-
 
 
 

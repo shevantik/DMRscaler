@@ -28,7 +28,7 @@ library(GenomicRanges)
 ```{r set up dmrscaler function }
    
       ############################     run everything         #########################
-      num_perm <- 40
+      num_perm <- 10
       clt_reps <- 5e4
       
       rim <- dmrscaler::generate_rand_index_matrix(num_controls = length(controls),
