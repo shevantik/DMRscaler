@@ -22,85 +22,77 @@ dmrscaler
 
 
 ### install dmrscaler (BIOCONDUCTOR SUBMISSION IN PROGRESS)
+###NOTE TO SELF CLEAN UP dmrscaler documentation
 ```{r}
 library("devtools")
-install("../dmrscaler")  ## takes ~10 min (why?)
+library(roxygen2)
+document()
+install("../dmrscaler")
 ```
-
 
 ## Example Dataset Setup
 We will use data from GSE149960 from (REFERENCE) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
-### Note: This vignette imports files from the Gene Expression Omnibus. (TODO: set cleanup option to remove files)
-```{r get_data }
+## Download data from GSE74432 
+
+```{r}
 library(GEOquery)
 
-## Change this line to change base directory where files will be stored
-base_dir <- getwd()
+## get sample phenotype data table 
+gse <- getGEO("GSE149960", GSEMatrix = TRUE)
+phen <- gse$GSE149960_series_matrix.txt.gz@phenoData@data
+rm(gse)
 
-## NOTE: 170.2 MB 
-gse_id <- "GSE149960"
-gse <- getGEO(gse_id, GSEMatrix = TRUE)
-phen <- gse[[1]]@phenoData@data; rm(gse)
-## NOTE: 214.6 MB, saves files in base_dir/GSE149960
-geo_file <- getGEOSuppFiles(gse_id, baseDir = base_dir)
-geo_file <- rownames(geo_file)
+## get methylation data as idat files (NOTE: this saves files locally in working directory, unpacked size is 411 Mb)
+## unpacked size is 411 Mb  
+getGEOSuppFiles("GSE149960")
+untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
+file.remove("GSE149960/GSE149960_RAW.tar")
 
-idat_dir <- paste(base_dir, gse_id, "idat", sep = "/")
-untar(geo_file, exdir = idat_dir)
-file.remove(geo_file) ## delete the *.tar file
-
-idat_files <- list.files(idat_dir, full = TRUE)
-sapply(idat_files, gunzip, overwrite = TRUE)  ## unzip the files
-
+idat_files <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
+sapply(idat_files, gunzip, overwrite = TRUE); rm(idat_files)
 ```
+
 
 
 ###  Preprocessing idat files with minfi 
 ```{r preprocessing_data}
 library(minfi)
-RGSet <- read.metharray.exp(base = idat_dir)
-GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet) ## This can take a few minutes
+###  Reading of idat files done with minfi library ###
+idats_dir<-"GSE149960/idat"
+RGSet <- read.metharray.exp(base = idats_dir)
+GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet)
 snps <- getSnpInfo(object = GRset.funnorm)
 GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm(snps)
-#rm(idats_dir, idats_files, targets)
-
+rm(idats_dir)
 ```
 
 
-```{r data_setup}
+## Set up for dmrscaler
+```{r}
+
 controls <- grep("control",phen$title)
 cases <- grep("hgps", phen$title)
 
 locs <- getLocations(GRset.funnorm)
-locs <- data.frame("names"=locs@ranges@NAMES,
-                   "pos"=locs@ranges@start,
-                   "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
+locs <- data.frame("names"=locs@ranges@NAMES, "pos"=locs@ranges@start, "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
 B <- getBeta(GRset.funnorm)
 
 ```
 
 
-```{r}
 
+```{r set up dmrscaler function }
 
 library(doParallel)
-library("devtools")
-library(roxygen2)
 library(rlang)
 library("dplyr")
 library(foreach)
-registerDoParallel()
-
-```
+registerDoParallel(detectCores())
 
 
-
-```{r}
-library(foreach)
-registerDoParallel() ## Permutations can be time intensive, parallelization helps
-
+############################     run everything         #########################
 num_perm <- 10
-clt_reps <- 5e4
+clt_reps <- 1e4
 
 rim <- dmrscaler::generate_rand_index_matrix(num_controls = length(controls),
                                              num_cases = length(cases),
@@ -119,72 +111,64 @@ fdt <- dmrscaler::write_FDR_table(real_table = mwr,
 fdrscaler <- dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt,
                                        MWW_FDR_threshold = 0.1)
 if(is.na(fdrscaler)){fdrscaler <- 1}
-
+## needs
 cltable <- dmrscaler::write_CLT_lookup_table(num_reps = clt_reps ,
                                              data_to_sample = mwr$p_val,
                                              FDR_scaler = fdrscaler,
                                              clt_numCGs = c(2, 5, 10, 25, 50))
+locs$chr <- as.factor(locs$chr)
+locs$scoring_values <- mwr$p_val
+```
+
+```{r}
+result <- dmrscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, cltable=cltable, layer_sizes = c(4,8,16,32,64))
 
 ```
 
 
 ```{r}
+example_region <- data.frame(chr="chr7", start=157280000, stop=158364000, stringsAsFactors = FALSE)
 
-locs$chr <- as.factor(locs$chr)
-locs$scoring_values <- mwr$p_val
+library(circlize)
+library(HilbertCurve)
 
-## 
-layer_sizes <- c(4,8,16,32,64)
-layers<-list()
+col_fun = colorRamp2(c(0,fdrscaler*0.99,fdrscaler,max(locs$scoring_values)), c("grey30", "grey60", "red", "red"))
+level = 6
+## 4^level - 1 = # segments
 
+hc_points <- locs[which(locs$chr== example_region$chr ),]
+hc_max <- nrow(hc_points)
+hc_col <- col_fun(hc_points$scoring_values)
+hc_size <- hc_points$scoring_values / max(hc_points$scoring_values)
 
-for(i in 1:length(layer_sizes)){
-  print(paste("layer", i, sep="_"))
-  nn_step_fraction = 2  ## 
-  nn_step_size <- max( floor(layer_sizes[i] / nn_step_fraction), 1) 
-  nn <- dmrscaler::n_nearest_window_scoring_func(indat = locs, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
-  signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=locs, quants=cltable , quants_significance_cutoff = "0.9999" )
-  signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
-  
-  ## multiple chromosomes each a list, coerce to single dataframe
-  signn <- bind_rows(signn)
-  layers[[i]]<-signn
-}
+#  hc_size <- hc_points$scoring_values / fdrscaler
+hc <- HilbertCurve(s=1,e=hc_max, level = level, reference = F, title = paste("chr",i,sep = ""))
+hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*2, "mm"),gp = gpar(col = hc_col, fill = hc_col))
+hc_polygon(hc, x1 = min(which(hc_points$pos >= example_region$start)), x2 = max(which(hc_points$pos <= example_region$stop)) )
 
+### now looking only at the specified region
+level = 4
+hc_points <- locs[which(locs$chr== example_region$chr & locs$pos >= example_region$start & locs$pos <= example_region$stop ),]
+hc_max <- nrow(hc_points)
+hc_col <- col_fun(hc_points$scoring_values)
+hc_size <- hc_points$scoring_values / max(hc_points$scoring_values)
 
-names(layers)<-paste("layer", layer_sizes, sep="_")
-
-
-atomic_layer <- data
-for(i in 1:length(layers)){
-  for(k in 1:length(layers[[i]]$start_pos)){
-    layers[[i]]$start_index[k]<-which(atomic_layer$pos==layers[[i]]$start_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
-    layers[[i]]$stop_index[k]<-which(atomic_layer$pos==layers[[i]]$stop_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
-  }
-}
-built_layers <- list()
-built_layers[[1]] <- dmrscaler::in_layer_merge(dmrs = layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
-built_layers[[1]] <- dmrscaler::in_layer_merge(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
-built_layers[[1]] <- dmrscaler::trim_layer(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
-for(i in 2:length(layers)){
-  #print(i)
-  built_layers[[i]] <- dmrscaler::build_next_layer(prev_layer = built_layers[[i-1]], 
-                                        windows_to_layer = layers[[i]], 
-                                        CG_table = atomic_layer,
-                                        FDR_scaler=fdrscaler,
-                                        lookup_table = cltable)
-  built_layers[[i]] <- dmrscaler::in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
-  temp <- dmrscaler::in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
-  while(!identical(built_layers[[i]], temp)){
-    built_layers[[i]] <- temp
-    temp <- dmrscaler::in_layer_merge(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
-  }
-
-built_layers[[i]] <- dmrscaler::trim_layer(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
- # print("done with one")
-}
+#  hc_size <- hc_points$scoring_values / fdrscaler
+hc <- HilbertCurve(s=1,e=hc_max, level = level, reference = F, title = paste("chr",i,sep = ""))
+hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*4, "mm"),gp = gpar(col = hc_col, fill = hc_col))
 
 
+
+```
+
+## Explore some features of the data
+dmrscaler defines differential methylation features iteratively, expanding the size of the window for aggregating on at each step
+this procedure allows a hierarchical structure to describe a region enriched in differntially methylated CpGs. We look at our example region here 
+```{r}
+library(networkD3)
+
+dmr_tree <- generate_dmr_tree(dmrscaler_result = result, layer=5, chr=example_region$chr, start = example_region$start, stop = example_region$stop)
+diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke = "black", linkColour = "black", opacity = 1)
 
 ```
 

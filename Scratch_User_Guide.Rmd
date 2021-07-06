@@ -10,37 +10,31 @@ output: html_document
 
 ```{r}
 library(GEOquery)
-library(minfi)
-## NOTE: 170.2 MB ## this is sufficient to get B matrix (only 787731/835424 CGs from minfi ?)
+
+## get sample phenotype data table 
 gse <- getGEO("GSE149960", GSEMatrix = TRUE)
 phen <- gse$GSE149960_series_matrix.txt.gz@phenoData@data
-## dat is Beta matrix here
-# dat <- gse$GSE149960_series_matrix.txt.gz@assayData$exprs
+rm(gse)
 
-## Check if dat is same as matrix with Minfi processing - it's not
-## Want raw idats
-
+## get methylation data as idat files (NOTE: this saves files locally in working directory, unpacked size is 411 Mb)
+## unpacked size is 411 Mb  
 getGEOSuppFiles("GSE149960")
 untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
-head(list.files("GSE149960/idat", pattern = "idat"))
-idatFiles <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
-sapply(idatFiles, gunzip, overwrite = TRUE)
+file.remove("GSE149960/GSE149960_RAW.tar")
 
+idat_files <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
+sapply(idat_files, gunzip, overwrite = TRUE); rm(idat_files)
+```
+
+```{r}
+library(minfi)
 ###  Reading of idat files done with minfi library ###
 idats_dir<-"GSE149960/idat"
-idats_files<-list.files(path=idats_dir, pattern = "*.idat")
-targets <- unlist(strsplit(list.files("GSE149960/idat", pattern = "idat"), split="_[RG][er][dn]"))
-targets <- targets[grep("idat", targets,invert = TRUE)]
 RGSet <- read.metharray.exp(base = idats_dir)
 GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet)
 snps <- getSnpInfo(object = GRset.funnorm)
 GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm(snps)
-rm(idats_dir, idats_files, targets)
-
-
-#### GSE dat appears to be same as minfi processed data, except GSE dat is missing ~100k probes
-## hist(B[rownames(dat),]-dat[])
-
+rm(idats_dir)
 ```
 
 
@@ -56,21 +50,23 @@ B <- getBeta(GRset.funnorm)
 
 ```
 
+###NOTE TO SELF CLEAN UP dmrscaler documentation
+```{r}
+library("devtools")
+library(roxygen2)
+document()
+install("../dmrscaler")
+```
 
 
 ```{r set up dmrscaler function }
 
 library(doParallel)
-library("devtools")
-library(roxygen2)
 library(rlang)
 library("dplyr")
 library(foreach)
-registerDoParallel()
+registerDoParallel(detectCores())
 
-setwd("C:/Users/LeroyBondhus/Desktop/PROJECTS/dmrscaler")
-document()
-install("../dmrscaler")
 
       ############################     run everything         #########################
       num_perm <- 10
