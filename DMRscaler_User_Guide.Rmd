@@ -182,7 +182,7 @@ diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke 
 
 Next we can look at the region using the Gviz package
 ```{r, fig.width = 7, fig.height=5}
-library("Gviz")
+library(Gviz)
 
 
 ## organize data used in tracks
@@ -206,7 +206,7 @@ beta_track <- DataTrack(range = gr, data = t(Bsub), groups=group,name="Beta", ty
 diff_beta_track <- DataTrack(range = gr, data = delta_mean_B[which], type=c("a","g"))
 
 ## set up gene model track ### 
-library("biomaRt")
+library(biomaRt)
 genesub <- example_gene_anno_df(chr=example_region$chr, start=example_region$start, stop=example_region$stop)
 if(!all(is.na(genesub))){
   grtrack <- GeneRegionTrack(genesub, chromosome = example_region$chr, start = example_region$start, stop=example_region$stop, transcriptAnnotation="symbol" ,collapseTranscripts = "meta")
@@ -223,7 +223,8 @@ for(j in 1:length(dmrscaler_result)){
 }
 
 
-plotTracks(c(list(itrack, gtrack, sig_track, beta_track, diff_beta_track, grtrack), layer_track), from = example_region$start-1, to=example_region$stop+1 )  
+plotTracks(c(list(itrack, gtrack, sig_track, beta_track, diff_beta_track, grtrack), layer_track
+                ), from = example_region$start-1, to=example_region$stop+1 ) 
 ```
 
 
