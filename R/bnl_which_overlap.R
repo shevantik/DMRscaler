@@ -1,8 +1,6 @@
 #' bnl_which_overlap
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 #  returns list which rows in prev_layer overlap those in window layer

@@ -1,8 +1,6 @@
 #' in_layer_merge
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 ## merge adjacent and overlapping windows within the same layer

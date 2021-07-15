@@ -1,8 +1,6 @@
 #' determine_significant_windows
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 determine_significant_windows<-function(window_results, indat, quants, quants_significance_cutoff = "0.9999"){

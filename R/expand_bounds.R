@@ -1,8 +1,6 @@
 #' expand_bounds
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 

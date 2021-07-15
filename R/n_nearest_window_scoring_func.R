@@ -10,7 +10,7 @@
 
 n_nearest_window_scoring_func <- function(indat, n_nearest, step_size, FDR_scaler){
 
-  indat$chr
+  #indat$chr
   noexport<-c("")
   export<-c("results")
   chrs <- levels(indat$chr)

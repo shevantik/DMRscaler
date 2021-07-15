@@ -1,8 +1,6 @@
 #' raw_score_CpG_bin
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 

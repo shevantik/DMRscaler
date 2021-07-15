@@ -1,8 +1,6 @@
 #' build_next_layer
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 

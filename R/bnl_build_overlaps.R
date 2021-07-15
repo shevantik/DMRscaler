@@ -1,8 +1,6 @@
 #' bnl_build_overlaps
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 #  returns list of CG index sets for each prev_layer DMR object that overlaps the windows DMR object

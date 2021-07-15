@@ -1,8 +1,6 @@
 #' bnl_check_significance
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 bnl_check_significance <- function(score, lookup_table, num_cgs, quants_significance_cutoff="0.999"){

@@ -1,8 +1,6 @@
 #' trim_layer
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 ## merge adjacent and overlapping windows within the same layer
@@ -24,16 +22,16 @@ trim_layer<-function(dmrs,CG_table, FDR_scaler,lookup_table){
     which <- which(CG_table$chr == chr & CG_table$pos >= start & CG_table$pos <= stop & CG_table$above_fdr)  ## above_fdr used to trim edges
     if(length(which)<=1){keep[i]<-0; next;}
     which <- min(which):max(which)
-    
-    
-    
+
+
+
     cgs <- CG_table$scoring_value[which]
     num_cgs <- length(cgs)
     unsigned_bin_score<-score_CpG_bin_layers(CG_scores = cgs , FDR_scaler = FDR_scaler)
     unsigned_bin_sig<-bnl_get_significance(score=unsigned_bin_score, lookup_table = lookup_table, num_cgs = num_cgs )
     sig <- bnl_check_significance(score=unsigned_bin_score, lookup_table = lookup_table, num_cgs = num_cgs)
     if(!sig){keep[i]<-0; next}
-    
+
     dmrs[i,]$start_pos <- min(CG_table[which,]$pos)
     dmrs[i,]$start_index <- min(which)
     dmrs[i,]$stop_pos <- max(CG_table[which,]$pos)
@@ -41,8 +39,8 @@ trim_layer<-function(dmrs,CG_table, FDR_scaler,lookup_table){
     dmrs[i,]$numCG <- length(which)
     dmrs[i,]$unsigned_bin_score <- unsigned_bin_score
     dmrs[i,]$unsigned_bin_sig <- unsigned_bin_sig
-    
-    
+
+
   }
   return(dmrs[which(keep==1),])
 }

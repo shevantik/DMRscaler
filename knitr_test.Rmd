@@ -1,5 +1,5 @@
 ---
-title: "The DMRscaler user's guide"
+title: "The DMRscaler user's guide knitrtest"
 author: "Leroy Bondhus"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -21,114 +21,25 @@ knitr::opts_chunk$set(
 dmrscaler is a method designed to identify features of differential methylation between case and control conditions across a wide range of genomic scale. In the first part of the vignette we step through downloading a publicly available dataset, running the statistical test for difference at individual CG site and a permutation test for estimating enrichment of differentially methylated CGs within a window. After this we run dmrscaler to call DMRs at each layer of window sizes generating a list of results. We then look at the data to visualize how dmrscaler has called and represents these DMR features.       
 
 
+```{r}
+load("temp_post_dmrscaler_pre_figure_gen.RData")
+```
+
+
 ## install dmrscaler 
 To install pull the most recent version from github and place in working directory 
 ```{r, echo=FALSE}
 library("devtools")
-library("roxygen2")
+library(roxygen2)
 document()
 install("../dmrscaler", quick=T)
-```
-
-## Example Dataset Setup
-We will use data from GSE149960 from (REFERENCE) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
-```{r}
-library("GEOquery")
-
-## get sample phenotype data table 
-gse <- getGEO("GSE149960", GSEMatrix = TRUE)
-phen <- gse$GSE149960_series_matrix.txt.gz@phenoData@data
-rm(gse)
-
-## get methylation data as idat files (NOTE: this saves files locally in working directory, unpacked size is 411 Mb)
-## unpacked size is 411 Mb  
-getGEOSuppFiles("GSE149960")
-untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
-file.remove("GSE149960/GSE149960_RAW.tar")
-
-idat_files <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
-sapply(idat_files, gunzip, overwrite = TRUE); rm(idat_files)
-```
-
-
-
-##  Preprocessing
-Preprocessing of idat files is done with minfi here.  
-```{r preprocessing_data}
-library("minfi")
-###  Reading of idat files done with minfi library ###
-idats_dir<-"GSE149960/idat"
-RGSet <- read.metharray.exp(base = idats_dir)
-GRset.funnorm <- preprocessFunnorm(RGSet);rm(RGSet)
-snps <- getSnpInfo(object = GRset.funnorm)
-GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm(snps)
-rm(idats_dir)
-```
-
-
-## Set up for dmrscaler
-
-```{r}
-
-controls <- grep("control",phen$title)
-cases <- grep("hgps", phen$title)
-
-library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
-locs <- getLocations(GRset.funnorm)
-locs <- data.frame("names"=locs@ranges@NAMES, "pos"=locs@ranges@start, "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
-B <- getBeta(GRset.funnorm)
-
-```
-
-
-## Run statistical tests and permutations to feed into dmrscaler method
-We use the non-parametric wilcox test for individual CG significance calculations and permutation of these significance values for estimating window level significance. 
-ToDo: The permutations involved are time consuming (~3-5 min per permutation, should run with at least 10), so the permutations should be run and the results included with the package as example data.   
-```{r set up dmrscaler function }
-
-library("doParallel")
-library("rlang")
+library(doParallel)
+library(rlang)
 library("dplyr")
-library("foreach")
-registerDoParallel(detectCores())
+library(foreach)
 
-num_perm <- 10
-clt_reps <- 1e4
-
-rim <- dmrscaler::generate_rand_index_matrix(num_controls = length(controls),
-                                             num_cases = length(cases),
-                                             num_permutations = num_perm)
-mrp <- dmrscaler::run_MWW_rand_permutation(index_matrix = rim, 
-                                           Beta = B,
-                                           num_permutations = num_perm)
-mrp <- -log10(mrp)
-mwr <- dmrscaler::run_MWW(control_indices = controls ,
-                          case_indices = cases ,
-                          Beta = B)
-mwr <- -log10(mwr)
-fdt <- dmrscaler::write_FDR_table(real_table = mwr,
-                                  rand_table = mrp)
-
-fdrscaler <- dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt,
-                                       MWW_FDR_threshold = 0.1)
-if(is.na(fdrscaler)){fdrscaler <- 1}
-
-## This is where significance level of individual windows is estimated by permutation 
-cltable <- dmrscaler::write_CLT_lookup_table(num_reps = clt_reps ,
-                                             data_to_sample = mwr$p_val,
-                                             FDR_scaler = fdrscaler,
-                                             clt_numCGs = c(2, 5, 10, 25, 50))
-locs$chr <- as.factor(locs$chr)
-locs$scoring_values <- mwr$p_val
 ```
 
-
-## Run dmrscaler to call DMRs
-Uses significance values associated with each CG location and the values from the statistical test and permutations along with windows of adjacent measured CGs defined by the layer_sizes
-ToDo: This can take   
-```{r}
-dmrscaler_result <- dmrscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, cltable=cltable, layer_sizes = c(4,8,16,32,64))
-```
 
 ## Choose an example region to look at
 ```{r}
@@ -136,7 +47,7 @@ example_region <- data.frame(chr="chr7",start=155000000, stop=159000000, strings
 ```
 
 
-```{r}
+```{r, fig.width = 4, fig.height=4}
 library(circlize)
 library(HilbertCurve)
 
@@ -169,20 +80,23 @@ hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*4, 
 
 ```
 
+
 ## Explore some features of the data
 dmrscaler defines differential methylation features iteratively, expanding the size of the window for aggregating on at each step
-this procedure allows a hierarchical structure to describe a region enriched in differntially methylated CpGs. We look at our example region here 
-```{r}
-library("networkD3")
+this procedure allows a hierarchical structure to describe a region enriched in differntially methylated CpGs. We look at our example region here
+```{r, fig.height=6, fig.width = 7}
+library(GenomeInfoDb)
+library(IRanges)
+library(networkD3)
 
 dmr_tree <- example_generate_dmr_tree(dmrscaler_result = dmrscaler_result, layer=5, chr=example_region$chr, start = example_region$start, stop = example_region$stop)
-diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke = "black", linkColour = "black", opacity = 1 )
+diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke = "black", linkColour = "black", opacity = 1)
 
 ```
 
 Next we can look at the region using the Gviz package
 ```{r, fig.width = 7, fig.height=5}
-library("Gviz")
+library(Gviz)
 
 
 ## organize data used in tracks
@@ -206,7 +120,7 @@ beta_track <- DataTrack(range = gr, data = t(Bsub), groups=group,name="Beta", ty
 diff_beta_track <- DataTrack(range = gr, data = delta_mean_B[which], type=c("a","g"))
 
 ## set up gene model track ### 
-library("biomaRt")
+library(biomaRt)
 genesub <- example_gene_anno_df(chr=example_region$chr, start=example_region$start, stop=example_region$stop)
 if(!all(is.na(genesub))){
   grtrack <- GeneRegionTrack(genesub, chromosome = example_region$chr, start = example_region$start, stop=example_region$stop, transcriptAnnotation="symbol" ,collapseTranscripts = "meta")
@@ -223,11 +137,10 @@ for(j in 1:length(dmrscaler_result)){
 }
 
 
-plotTracks(c(list(itrack, gtrack, sig_track, beta_track, diff_beta_track, grtrack), layer_track), from = example_region$start-1, to=example_region$stop+1 )  
+plotTracks(c(list(itrack, gtrack, sig_track, beta_track, diff_beta_track, grtrack), layer_track
+                ), from = example_region$start-1, to=example_region$stop+1 ) 
 ```
 
 
-```{r}
-sessionInfo()
 
-```
+

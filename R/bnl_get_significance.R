@@ -1,8 +1,6 @@
 #' bnl_get_significance
 #'
 #'
-#' @param
-#' @param
 #' @export
 bnl_get_significance <- function(score, lookup_table, num_cgs){
   low <- max(which(lookup_table$draw_count <= num_cgs)) ## lower CG bound

@@ -1,8 +1,6 @@
 #' estimate_peak_significance
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 estimate_peak_significance <- function(num_CG, score, lookup_table){

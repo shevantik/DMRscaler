@@ -1,8 +1,6 @@
 #' in_layer_is_adjacent
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 in_layer_is_adjacent<-function(left,right){

@@ -1,8 +1,6 @@
 #' score_CpG_bin_layers
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 

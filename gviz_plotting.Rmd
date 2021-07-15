@@ -1,0 +1,251 @@
+---
+title: "sotos_GVIZ_Plotting"
+author: "Leroy_Bondhus"
+date: "March 11, 2020"
+output: html_document
+---
+
+
+```{r}
+
+library(doParallel)
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("gridExtra")
+
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+
+BiocManager::install("Gviz")
+library(Gviz)
+```
+
+
+```{r}
+locs<-mapToGenome(GRset.funnorm)
+locs<-locs@rowRanges
+
+locs<-as.data.frame(cbind(as.character(locs@ranges@NAMES),as.numeric(as.character(locs@ranges@start)),as.character(locs@seqnames)))
+colnames(locs)<-c("names", "pos", "chr")
+locs$pos<-as.numeric(as.character(locs$pos))
+
+```
+
+
+```{r}
+
+gtf_df <- rtracklayer::import("/home/lbondhus/Desktop/STABLE_DATA/HUMAN_GENOME/Homo_sapiens.GRCh37.87.chr.gtf")
+gtf_df <- as.data.frame(gtf_df)
+gtf_df$seqnames<-paste("chr", gtf_df$seqnames, sep = "")
+
+genes<-as.data.frame(cbind(chromosome=gtf_df$seqnames, start=gtf_df$start, end=gtf_df$end ))
+genes<-cbind(genes, width=as.numeric(as.character(gtf_df$width)), strand=gtf_df$strand, feature=gtf_df$type, gene=gtf_df$gene_id, exon=gtf_df$exon_id, transcript=gtf_df$transcript_id, symbol=gtf_df$gene_name)
+
+genes$start<-as.numeric(as.character(genes$start))
+genes$end<-as.numeric(as.character(genes$end))
+
+
+genes_exons<-genes[complete.cases(genes),]
+class(genes_exons$start)
+
+```
+
+
+
+```{r}
+date<-Sys.Date()
+date<-format(date, format="%Y%m%d")
+Beta_directory<-paste("/home/lbondhus/Desktop/PROJECTS/Sotos_dmrscaler_testing/figures/Genomic_Ranges_Figures",date, "/", sep = "")
+if(!dir.exists(Beta_directory)){
+  dir.create(Beta_directory)
+}
+
+
+
+```
+
+```{r subset B}
+B<-getBeta(GRset.funnorm)
+pdat<-pData(GRset.funnorm)
+
+```
+
+
+```{r set groups}
+
+
+
+#patient_index<-grep("KAT", pdat$Sample_Name[grep("KAT|CONTROL", pdat$Sample_Name)])
+#control_index<-grep("CONTROL", pdat$Sample_Name[grep("KAT|CONTROL", pdat$Sample_Name)])
+
+#other_pat_index<-grep("KAT|CONTROL", pdat$Sample_Name, invert = TRUE)
+                      
+patient_index<-grep("Sotos",pdat$Sample_Group)
+control_index<-grep("Control", pdat$Sample_Group)                      
+
+group<-as.character(seq(from=1, to=ncol(B), by =1 ))
+
+group[patient_index] <- "Sotos"
+group[control_index] <- "Control"
+
+
+group <- as.factor(group)
+#color=c("cadetblue2", "cyan3", "deepskyblue", "darkgreen", "darkgoldenrod3", "darkorange", "orange1", "gold", "forestgreen", "tomato")
+color=c("blue", "seagreen3", "lightskyblue1", "lightskyblue2", "lightskyblue3",  "deepskyblue", "lightseagreen", "lightsteelblue1", "lightsteelblue2", "lightsteelblue3" )
+color=c("blue", "orchid", "darkorchid", "deeppink", "firebrick",  "deepskyblue", "lightseagreen", "orange", "orange1", "gold" )
+color=c("blue", "seagreen3")
+linewide=c(rep(1,4), 1, 1 , rep(1,4))
+linewide=c(5, 5 , rep(1,8))
+linewide=c(5, 5 )
+```
+
+```{r}
+
+genes_exons_all<-genes[complete.cases(genes),]
+
+Region_name <- "test6"
+chr="chr2"
+start = as.numeric(219646481-1)
+stop =  as.numeric(219844896+1)
+hypomethylation_peaks<-data.frame(chr=chr,start=start,end=stop)
+
+genes_exons_all<-genes_exons_all[complete.cases(genes_exons_all),]
+
+genes_exons<-genes_exons_all[ which(genes_exons_all$chromosome == chr),] 
+genes_exons$symbol<-as.character(genes_exons$symbol)
+
+genes_exons<-genes_exons[which(genes_exons$start>=start & genes_exons$end<=stop),]
+
+genes_exons<-droplevels(genes_exons)
+
+
+#chr13 110825001 111050000
+```
+
+```{r}
+chr12
+52968762
+53273449
+chr16
+1069551
+1100847
+chr2
+219646481
+219844896
+```
+
+
+
+```{r}
+cex_size=5
+cex_small=3
+gen<-"hg19"
+
+
+which<-which(locs$chr==chr & locs$pos>start & locs$pos<stop )
+load(file="/home/lbondhus/Desktop/PROJECTS/Sotos_dmrscaler_testing/intermediate_data/B_sotos")
+
+B<-B[which,]
+
+irange<-IRanges(start=locs[which,"pos"], width=1, names = )
+grange<-GRanges(seqnames=chr, ranges =  ranges(irange), mcols = B )
+data(geneModels)
+grtrack <- GeneRegionTrack(genes_exons, genome=gen, chromosome=chr, name="Gene Model", transcriptAnnotation="symbol")
+displayPars(grtrack) <- list( background.panel="#FFFEDB", col=NULL, fontsize=24, fontsize.group=38)
+d_track<-DataTrack(range=grange, data=t(B), groups=group, genome=gen, name="Beta", col=color, lwd=linewide)
+displayPars(d_track) <- list( cex.legend=2, cex.axis=2, cex.title=3.5)
+gtrack<-GenomeAxisTrack()
+displayPars(gtrack) <- list(cex=cex_small,cex.id=4,littleTicks=TRUE)
+itrack<-IdeogramTrack(genome=gen,chromosome = chr)
+displayPars(itrack) <- list(cex=cex_small,cex.bands=2)
+
+filename=paste(Beta_directory, Region_name , ".png", sep = "")
+png(file=filename, width = 4400, height = 1000) ####### start writing 
+plotTracks(list(itrack, gtrack, d_track, grtrack), from = start, to=stop,type=c("a", "p", "confint"), sizes = c(1,1,4,6))
+dev.off() ####  stop writing
+
+```
+
+
+
+
+```{r testing}
+grtrack<-GeneRegionTrack(genes, genome=gen, chromosome = chr, name = "Gene Model")
+plotTracks(list(grtrack, itrack, d_track))
+
+```
+
+################## FOR LIST OF RANGES #################
+
+
+```{r}
+
+results_dir<-"/home/lbondhus/Desktop/PROJECTS/KAT6A_DNA_methylation_project/results/"
+
+filename <- paste(results_dir, "KAT6A_v_Control_peaks_of_10kb_hypomethylation_neglog10_2.5_cutoff.csv", sep = "")
+hypomethylation_peaks<-read.csv(filename)
+
+filename <- paste(results_dir, "KAT6A_v_Control_peaks_of_10kb_hypermethylation_neglog10_2.5_cutoff.csv", sep = "")
+hypermethylation_peaks<-read.csv(filename)
+
+date<-Sys.Date()
+date<-format(date, format="%Y%m%d")
+Beta_directory<-paste("/home/lbondhus/Desktop/PROJECTS/KAT6A_DNA_methylation_project/figures/fixed_width_peaks__windowsize_16000bp__stepfraction_4__fdr_0.1_end",date, "/", sep = "")
+if(!dir.exists(Beta_directory)){
+  dir.create(Beta_directory)
+}
+
+
+
+genes_exons_all<-genes[complete.cases(genes),]
+genes_exons_all<-genes_exons_all[complete.cases(genes_exons_all),]
+
+
+
+for(i in 1:nrow(hypomethylation_peaks)){    
+    
+
+    chr=as.character(hypomethylation_peaks$chr[i])
+    start = as.numeric(hypomethylation_peaks$start[i])
+    stop =  as.numeric(hypomethylation_peaks$end[i])
+    Region_name <- paste("hoxd", "_", chr, "_from_", start, "_to_", stop, ".png")    
+    
+  #  genes_exons<-genes_exons_all[ which( (genes_exons_all$chromosome == chr) & (genes_exons_all$start>=start) & (genes_exons_all$end<=stop)) , ] 
+  # genes_exons<-droplevels(genes_exons)
+    
+    genes_exons<-genes[which((genes$chr==chr) & (genes$start>=start) & (genes$end<=stop)),]
+    genes_exons<-droplevels(genes_exons)
+    genes_exons<-genes_exons[complete.cases(genes_exons),]
+    cex_size=8
+    cex_small=5
+    gen<-"hg19"
+    
+    
+    which<-which(locs$chr==chr & locs$pos>start & locs$pos<stop ) #& (-log10(mann_whitney_wilcox_results$p_val) > 0))
+    B<-getBeta(GRset.funnorm)
+    B<-B[which,]
+    
+    irange<-IRanges(start=locs[which,"pos"], width=1)
+    grange<-GRanges(seqnames=chr, ranges =  ranges(irange), mcols = B )
+    data(geneModels)
+    grtrack <- GeneRegionTrack(genes_exons, genome=gen, chromosome=chr, name="Gene Model", transcriptAnnotation="symbol", fill="grey35")
+    displayPars(grtrack) <- list( background.panel="grey90", col=NULL, fontsize=50, fontsize.group=70,fontcolor.group="grey35",collapseTranscripts="longest")
+    d_track<-DataTrack(range=grange, data=t(B), groups=group, genome=gen, name="Beta", col=color, lwd=linewide, fontcolor.legend="grey15")
+    displayPars(d_track) <- list( cex.legend=cex_small, cex.axis=cex_small, cex.title=cex_size,background.panel="grey95", cex=1.5)
+    gtrack<-GenomeAxisTrack()
+    displayPars(gtrack) <- list(cex=cex_small,cex.id=4,littleTicks=TRUE,background.panel="grey75",fontcolor="grey25")
+    itrack<-IdeogramTrack(genome=gen,chromosome = chr)
+    displayPars(itrack) <- list(cex=cex_small,cex.bands=2,background.panel="grey90",fontcolor="grey35")
+    
+    filename=paste(Beta_directory, Region_name , ".png", sep = "")
+    png(file=filename, width = 4400, height = 2000) ####### start writing 
+    plotTracks(list(itrack, gtrack, d_track, grtrack), from = start, to=stop,type=c("a", "p", "confint"), sizes = c(1,1,5,2), background.title="grey55", alpha.confint=0.5)
+    dev.off() ####  stop writing
+    
+}
+
+
+```
+
+

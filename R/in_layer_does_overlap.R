@@ -1,8 +1,6 @@
 #' in_layer_does_overlap
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 

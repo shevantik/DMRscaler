@@ -1,8 +1,6 @@
 #' bnl_rescore_wo_max_overlap
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 ###bnl_rescore_wo_max_overlap(windows_to_layer[i,], max_overlap, CG_table)

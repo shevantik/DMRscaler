@@ -1,8 +1,6 @@
 #' merge_adjacent
 #'
 #'
-#' @param
-#' @param
 #' @export
 
 merge_adjacent<- function(left,right, CG_table, FDR_scaler, lookup_table){

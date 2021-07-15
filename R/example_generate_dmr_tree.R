@@ -1,4 +1,4 @@
-#' generate_dmr_tree
+#' example_generate_dmr_tree
 #'
 #'
 #' @param
@@ -6,7 +6,7 @@
 #' @export
 #'
 
-generate_dmr_tree <- function(dmrscaler_result, layer, chr, start, stop ){
+example_generate_dmr_tree <- function(dmrscaler_result, layer, chr, start, stop ){
 
   strip_grs <- function(node){
     node <- list("name" = node$name, "children" = node$children)

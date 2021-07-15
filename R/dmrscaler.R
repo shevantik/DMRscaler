@@ -7,6 +7,7 @@
 #'
 
 dmrscaler <- function(locs, layer_sizes = c(4,8,16,32,64),  layer_step_fracs = NA, fdrscaler, cltable, signif_cutoff = "0.9999" ){
+
   if(is.na(layer_step_fracs)){ layer_step_fracs <- rep(2, length(layer_sizes))}
   layers<-list()
   for(i in 1:length(layer_sizes)){
@@ -25,7 +26,7 @@ dmrscaler <- function(locs, layer_sizes = c(4,8,16,32,64),  layer_step_fracs = N
 
   names(layers)<-paste("layer", layer_sizes, sep="_")
 
-
+  print("adding CG indices")
   atomic_layer <- locs
   for(i in 1:length(layers)){
     for(k in 1:length(layers[[i]]$start_pos)){
@@ -33,12 +34,13 @@ dmrscaler <- function(locs, layer_sizes = c(4,8,16,32,64),  layer_step_fracs = N
       layers[[i]]$stop_index[k]<-which(atomic_layer$pos==layers[[i]]$stop_pos[k] & as.character(atomic_layer$chr) == as.character(layers[[i]]$chr[k]))
     }
   }
+  print("merging layers")
   built_layers <- list()
   built_layers[[1]] <- in_layer_merge(dmrs = layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
   built_layers[[1]] <- in_layer_merge(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = fdrscaler, lookup_table = cltable)
   built_layers[[1]] <- trim_layer(dmrs = built_layers[[1]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
   for(i in 2:length(layers)){
-    #print(i)
+    print(paste("merging layer", i))
     built_layers[[i]] <- build_next_layer(prev_layer = built_layers[[i-1]],
                                                      windows_to_layer = layers[[i]],
                                                      CG_table = atomic_layer,
@@ -53,6 +55,13 @@ dmrscaler <- function(locs, layer_sizes = c(4,8,16,32,64),  layer_step_fracs = N
 
     built_layers[[i]] <- trim_layer(dmrs = built_layers[[i]], CG_table = atomic_layer, FDR_scaler = 2, lookup_table = cltable)
     # print("done with one")
+  }
+
+  for(i in 1:length(built_layers)){
+    built_layers[[i]] <- built_layers[[i]][,which(is.element(colnames(built_layers[[i]]),
+                                                                      c("chr","start_pos","stop_pos","numCG",
+                                                                        "unsigned_bin_score", "unsigned_bin_sig",
+                                                                        "start_index","stop_index")))]
   }
   return(built_layers)
 

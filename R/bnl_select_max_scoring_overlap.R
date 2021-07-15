@@ -1,8 +1,6 @@
 #' bnl_select_max_scoring_overlap
 #'
 #'
-#' @param
-#' @param
 #' @export
 #'
 bnl_select_max_scoring_overlap<-function(overlaps, CG_table, FDR_scaler){

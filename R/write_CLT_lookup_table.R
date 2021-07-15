@@ -3,11 +3,8 @@
 #' This function generates a lookup table
 #' to estimate the likelihood that a window
 #' represents a DMR feature (i.e. appears enriched in differntially methylated CGs)
-#' (NOTE THIS METHOD IS RATHER CRUDE, COULD STAND TO BE IMPROVED... SUGGESTIONS WELCOME :)
+#' (NOTE THIS METHOD IS RATHER CRUDE, SHOULD BE IMPROVED OR REPLACE)
 #'
-#' @param
-#' @param
-#' @param
 #' @export
 
 
