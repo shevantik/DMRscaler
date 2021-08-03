@@ -26,7 +26,7 @@ dmrscaler is a method designed to identify features of differential methylation 
 
 ## install dmrscaler 
 To install pull the most recent version from github and place in working directory 
-```{r, results='hide', warning=FALSE}
+```{r, results='hide', warning=FALSE, , message=FALSE}
 library("devtools")
 library("roxygen2")
 document()
@@ -35,7 +35,7 @@ install("../dmrscaler")
 
 ## Example Dataset Setup
 We will use data from GSE149960 from (REFERENCE) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
-```{r get-dataset-dependencies, results='hide'}
+```{r get-dataset-dependencies, message=FALSE}
 library("GEOquery")
 ```
 
@@ -59,7 +59,7 @@ sapply(idat_files, gunzip, overwrite = TRUE); rm(idat_files)
 
 ##  Preprocessing
 Preprocessing of idat files is done with minfi here.
-```{r preprocessing-dependencies, results='hide'}
+```{r preprocessing-dependencies, message=FALSE}
 library("minfi")
 ```
 
@@ -75,7 +75,7 @@ rm(idats_dir)
 
 
 ## Set up for dmrscaler
-```{r data-setup-dependencies}
+```{r data-setup-dependencies, message=FALSE}
 library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
 ```
 
@@ -91,7 +91,7 @@ B <- getBeta(GRset.funnorm)
 ## Run statistical tests and permutations to feed into dmrscaler method
 We use the non-parametric wilcox test for individual CG significance calculations and permutation of these significance values for estimating window level significance. 
 ToDo: The permutations involved are time consuming (~3-5 min per permutation, should run with at least 10), so the permutations should be run and the results included with the package as example data.   
-```{r dmrscaler-set-up-dependencies, }
+```{r dmrscaler-set-up-dependencies, message=FALSE}
 library("doParallel")
 library("rlang")
 library("dplyr")
@@ -144,7 +144,7 @@ dmrscaler_result <- dmrscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, clt
 example_region <- data.frame(chr="chr7",start=155000000, stop=159000000, stringsAsFactors = FALSE)
 ```
 
-```{r hilbert-curve-dependencies, results='hide'}
+```{r hilbert-curve-dependencies, message=FALSE}
 library(circlize)
 library(HilbertCurve)
 ```
