@@ -21,16 +21,16 @@ knitr::opts_chunk$set(
                       warning=FALSE)
 ```
 ## Summary
-dmrscaler is a method designed to identify features of differential methylation between case and control conditions across a wide range of genomic scale. In the first part of the vignette we step through downloading a publicly available dataset, running the statistical test for difference at individual CG site and a permutation test for estimating enrichment of differentially methylated CGs within a window. After this we run dmrscaler to call DMRs at each layer of window sizes generating a list of results. We then look at the data to visualize how dmrscaler has called and represents these DMR features.       
+DMRscaler is a method designed to identify features of differential methylation between case and control conditions across a wide range of genomic scale. In the first part of the vignette we step through downloading a publicly available dataset, running the statistical test for difference at individual CG site and a permutation test for estimating enrichment of differentially methylated CGs within a window. After this we run DMRscaler to call DMRs at each layer of window sizes generating a list of results. We then look at the data to visualize how DMRscaler has called and represents these DMR features.       
 
 
-## install dmrscaler 
+## install DMRscaler 
 To install pull the most recent version from github and place in working directory 
 ```{r, results='hide', warning=FALSE, , message=FALSE}
 library("devtools")
 library("roxygen2")
 document()
-install("../dmrscaler")
+install("../DMRscaler")
 ```
 
 ## Example Dataset Setup
@@ -74,7 +74,7 @@ rm(idats_dir)
 ```
 
 
-## Set up for dmrscaler
+## Set up for DMRscaler
 ```{r data-setup-dependencies, message=FALSE}
 library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
 ```
@@ -88,42 +88,42 @@ B <- getBeta(GRset.funnorm)
 ```
 
 
-## Run statistical tests and permutations to feed into dmrscaler method
+## Run statistical tests and permutations to feed into DMRscaler method
 We use the non-parametric wilcox test for individual CG significance calculations and permutation of these significance values for estimating window level significance. 
 ToDo: The permutations involved are time consuming (~3-5 min per permutation, should run with at least 10), so the permutations should be run and the results included with the package as example data.   
-```{r dmrscaler-set-up-dependencies, message=FALSE}
+```{r DMRscaler-set-up-dependencies, message=FALSE}
 library("doParallel")
 library("rlang")
 library("dplyr")
 library("foreach")
 ```
 
-```{r dmrscaler-set-up}
+```{r DMRscaler-set-up}
 registerDoParallel(detectCores())
 
 num_perm <- 10
 clt_reps <- 1e4
 
-rim <- dmrscaler::generate_rand_index_matrix(num_controls = length(controls),
+rim <- DMRscaler::generate_rand_index_matrix(num_controls = length(controls),
                                              num_cases = length(cases),
                                              num_permutations = num_perm)
-mrp <- dmrscaler::run_MWW_rand_permutation(index_matrix = rim, 
+mrp <- DMRscaler::run_MWW_rand_permutation(index_matrix = rim, 
                                            Beta = B,
                                            num_permutations = num_perm)
 mrp <- -log10(mrp)
-mwr <- dmrscaler::run_MWW(control_indices = controls ,
+mwr <- DMRscaler::run_MWW(control_indices = controls ,
                           case_indices = cases ,
                           Beta = B)
 mwr <- -log10(mwr)
-fdt <- dmrscaler::write_FDR_table(real_table = mwr,
+fdt <- DMRscaler::write_FDR_table(real_table = mwr,
                                   rand_table = mrp)
 
-fdrscaler <- dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt,
+fdrscaler <- DMRscaler::get_FDR_scalar(MWW_FDR_table = fdt,
                                        MWW_FDR_threshold = 0.1)
 if(is.na(fdrscaler)){fdrscaler <- 1}
 
 ## This is where significance level of individual windows is estimated by permutation 
-cltable <- dmrscaler::write_CLT_lookup_table(num_reps = clt_reps ,
+cltable <- DMRscaler::write_CLT_lookup_table(num_reps = clt_reps ,
                                              data_to_sample = mwr$p_val,
                                              FDR_scaler = fdrscaler,
                                              clt_numCGs = c(2, 5, 10, 25, 50))
@@ -132,11 +132,11 @@ locs$scoring_values <- mwr$p_val
 ```
 
 
-## Run dmrscaler to call DMRs
+## Run DMRscaler to call DMRs
 Uses significance values associated with each CG location and the values from the statistical test and permutations along with windows of adjacent measured CGs defined by the layer_sizes
 ToDo: This can take   
 ```{r}
-dmrscaler_result <- dmrscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, cltable=cltable, layer_sizes = c(4,8,16,32,64))
+DMRscaler_result <- DMRscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, cltable=cltable, layer_sizes = c(4,8,16,32,64))
 ```
 
 ## Choose an example region to look at
@@ -177,14 +177,14 @@ hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*4, 
 ```
 
 ## Explore some features of the data
-dmrscaler defines differential methylation features iteratively, expanding the size of the window for aggregating on at each step
+DMRscaler defines differential methylation features iteratively, expanding the size of the window for aggregating on at each step
 this procedure allows a hierarchical structure to describe a region enriched in differntially methylated CpGs. We look at our example region here 
 ```{r dmr-structure-visual-dependencies, results='hide'}
 library(networkD3)
 ```
 
 ```{r dmr-structure-visual, fig.height=6, fig.width = 7}
-dmr_tree <- example_generate_dmr_tree(dmrscaler_result = dmrscaler_result, layer=5, chr=example_region$chr, start = example_region$start, stop = example_region$stop)
+dmr_tree <- example_generate_dmr_tree(DMRscaler_result = DMRscaler_result, layer=5, chr=example_region$chr, start = example_region$start, stop = example_region$stop)
 diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke = "black", linkColour = "black", opacity = 1 )
 
 ```
@@ -222,12 +222,12 @@ if(!all(is.na(genesub))){
   grtrack <- GeneRegionTrack(genesub, chromosome = example_region$chr, start = example_region$start, stop=example_region$stop, transcriptAnnotation="symbol" ,collapseTranscripts = "meta")
 }else{grtrack<-GeneRegionTrack()}
 
-## set up dmrscaler results layer tracks
+## set up DMRscaler results layer tracks
 layer_track <- list()
-for(j in 1:length(dmrscaler_result)){
-  layer_track[[j]] <- AnnotationTrack(start = dmrscaler_result[[j]]$start_pos, 
-                                      end =  dmrscaler_result[[j]]$stop_pos,
-                                      chromosome = dmrscaler_result[[j]]$chr,
+for(j in 1:length(DMRscaler_result)){
+  layer_track[[j]] <- AnnotationTrack(start = DMRscaler_result[[j]]$start_pos, 
+                                      end =  DMRscaler_result[[j]]$stop_pos,
+                                      chromosome = DMRscaler_result[[j]]$chr,
                                       strand = "*", genome = "hg19", name=paste("layer", j, sep = "_"))
   displayPars(layer_track[[j]]) <- list(cex.legend=0.7, cex.axis=0.7, cex.title=0.7, rotation.title=0, stackHeight = 1, shape="box")
 }
