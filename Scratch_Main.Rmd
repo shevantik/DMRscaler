@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ###   
-###   This file is temporary. Use this file to build, test, generalize, run dmrscaler method and its supporting files
+###   This file is temporary. Use this file to build, test, generalize, run DMRscaler method and its supporting files
 ###   Functions should be built to be general and tested here
 ###
 
@@ -25,30 +25,30 @@ install("../DMRscaler")
 library(GenomicRanges)
 ```
 
-```{r set up dmrscaler function }
+```{r set up DMRscaler function }
    
       ############################     run everything         #########################
       num_perm <- 10
       clt_reps <- 5e4
       
-      rim <- dmrscaler::generate_rand_index_matrix(num_controls = length(controls),
+      rim <- DMRscaler::generate_rand_index_matrix(num_controls = length(controls),
                                                    num_cases = length(cases),
                                                    num_permutations = num_perm)
-      mrp <- dmrscaler::run_MWW_rand_permutation(index_matrix = rim, 
+      mrp <- DMRscaler::run_MWW_rand_permutation(index_matrix = rim, 
                                                  Beta = B,
                                                  num_permutations = num_perm)
       mrp <- -log10(mrp)
-      mwr <- dmrscaler::run_MWW(control_indices = controls ,
+      mwr <- DMRscaler::run_MWW(control_indices = controls ,
                                 case_indices = cases ,
                                 Beta = B)
       mwr <- -log10(mwr)
-      fdt <- dmrscaler::write_FDR_table(real_table = mwr,
+      fdt <- DMRscaler::write_FDR_table(real_table = mwr,
                                         rand_table = mrp)
       
-      fdrscaler <- dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt,
+      fdrscaler <- DMRscaler::get_FDR_scalar(MWW_FDR_table = fdt,
                                              MWW_FDR_threshold = 0.1)
       if(is.na(fdrscaler)){fdrscaler <- 1}
-      cltable <- dmrscaler::write_CLT_lookup_table(num_reps = clt_reps ,
+      cltable <- DMRscaler::write_CLT_lookup_table(num_reps = clt_reps ,
                                                    data_to_sample = mwr$p_val,
                                                    FDR_scaler = fdrscaler,
                                                    clt_numCGs = c(2, 5, 10, 25, 50))
@@ -65,9 +65,9 @@ library(GenomicRanges)
         print(paste("layer", i, sep="_"))
         nn_step_fraction = 2 
         nn_step_size <- floor(layer_sizes[i] / nn_step_fraction)
-        nn <- dmrscaler::n_nearest_window_scoring_func(indat = data, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
-        signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable , quants_significance_cutoff = "0.9999" )
-        signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
+        nn <- DMRscaler::n_nearest_window_scoring_func(indat = data, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
+        signn <- DMRscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable , quants_significance_cutoff = "0.9999" )
+        signn <- DMRscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
         
         ## multiple chromosomes each a list, coerce to single dataframe
         signn <- bind_rows(signn)
@@ -141,20 +141,20 @@ data$pos <- locsmall$pos
 ```
 
 ```{r}
-rim<-dmrscaler::generate_rand_index_matrix(num_controls = length( which(pdat$Sample_Group=="CONTROL" & !grepl("-2",pdat$Sample_Name))), 
+rim<-DMRscaler::generate_rand_index_matrix(num_controls = length( which(pdat$Sample_Group=="CONTROL" & !grepl("-2",pdat$Sample_Name))), 
                                            num_cases = length( which(pdat$Sample_Group=="Patient" & !grepl("-2",pdat$Sample_Name))),
                                            num_permutations = 40)
-mrp<-dmrscaler::run_MWW_rand_permutation(index_matrix = rim, Beta=Bsmall, num_permutations = 40)
+mrp<-DMRscaler::run_MWW_rand_permutation(index_matrix = rim, Beta=Bsmall, num_permutations = 40)
 mrp<- -log10(mrp)
-mwr<-dmrscaler::run_MWW(control_indices = which(pdat$Sample_Group=="CONTROL" & !grepl("-2",pdat$Sample_Name)),
+mwr<-DMRscaler::run_MWW(control_indices = which(pdat$Sample_Group=="CONTROL" & !grepl("-2",pdat$Sample_Name)),
                         case_indices = which(pdat$Sample_Group=="Patient" & !grepl("-2",pdat$Sample_Name)), 
                         Beta = Bsmall)
 mwr<- -log10(mwr)
-fdt<-dmrscaler::write_FDR_table(real_table = mwr, rand_table = mrp)
+fdt<-DMRscaler::write_FDR_table(real_table = mwr, rand_table = mrp)
 
-fdrscaler<-dmrscaler::get_FDR_scalar(MWW_FDR_table = fdt, MWW_FDR_threshold = 0.1)
+fdrscaler<-DMRscaler::get_FDR_scalar(MWW_FDR_table = fdt, MWW_FDR_threshold = 0.1)
 
-cltable <- dmrscaler::write_CLT_lookup_table(num_reps = 1e5, data_to_sample = mwr$p_val, FDR_scaler = fdrscaler)
+cltable <- DMRscaler::write_CLT_lookup_table(num_reps = 1e5, data_to_sample = mwr$p_val, FDR_scaler = fdrscaler)
 
 
 data<-data.frame(row.names = locsmall$names )
@@ -163,9 +163,9 @@ data$pos <- locsmall$pos
 data$scoring_value <- mwr$p_val
 
 ### this is the part that will run in tandem or parallel
-nn <- dmrscaler::n_nearest_window_scoring_func(indat = data, n_nearest = 4, step_size = 2, FDR = fdrscaler)
-signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable)
-signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
+nn <- DMRscaler::n_nearest_window_scoring_func(indat = data, n_nearest = 4, step_size = 2, FDR = fdrscaler)
+signn <- DMRscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable)
+signn <- DMRscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
 
 
 ### 
@@ -178,10 +178,10 @@ for(i in 1:length(layer_sizes)){
   nn_step_fraction = 2 
   nn_step_size <- floor(layer_sizes[i] / nn_step_fraction)
 
-  nn <- dmrscaler::n_nearest_window_scoring_func(indat = data, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
+  nn <- DMRscaler::n_nearest_window_scoring_func(indat = data, n_nearest = layer_sizes[i], step_size = nn_step_size, FDR = fdrscaler)
   
-  signn <- dmrscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable , quants_significance_cutoff = "0.99" )
-  signn <- dmrscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
+  signn <- DMRscaler::determine_significant_windows(window_results=nn, indat=data, quants=cltable , quants_significance_cutoff = "0.99" )
+  signn <- DMRscaler::add_significance(three_window_list =  signn, lookup_table = cltable)
   
   layers[[i]]<-signn
 }

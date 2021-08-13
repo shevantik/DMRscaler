@@ -136,7 +136,7 @@ locs$scoring_values <- mwr$p_val
 Uses significance values associated with each CG location and the values from the statistical test and permutations along with windows of adjacent measured CGs defined by the layer_sizes
 ToDo: This can take   
 ```{r}
-DMRscaler_result <- DMRscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, cltable=cltable, layer_sizes = c(4,8,16,32,64))
+dmrscaler_result <- DMRscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, cltable=cltable, layer_sizes = c(4,8,16,32,64))
 ```
 
 ## Choose an example region to look at
@@ -184,7 +184,7 @@ library(networkD3)
 ```
 
 ```{r dmr-structure-visual, fig.height=6, fig.width = 7}
-dmr_tree <- example_generate_dmr_tree(DMRscaler_result = DMRscaler_result, layer=5, chr=example_region$chr, start = example_region$start, stop = example_region$stop)
+dmr_tree <- example_generate_dmr_tree(dmrscaler_result = dmrscaler_result, layer=5, chr=example_region$chr, start = example_region$start, stop = example_region$stop)
 diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke = "black", linkColour = "black", opacity = 1 )
 
 ```
@@ -224,10 +224,10 @@ if(!all(is.na(genesub))){
 
 ## set up DMRscaler results layer tracks
 layer_track <- list()
-for(j in 1:length(DMRscaler_result)){
-  layer_track[[j]] <- AnnotationTrack(start = DMRscaler_result[[j]]$start_pos, 
-                                      end =  DMRscaler_result[[j]]$stop_pos,
-                                      chromosome = DMRscaler_result[[j]]$chr,
+for(j in 1:length(dmrscaler_result)){
+  layer_track[[j]] <- AnnotationTrack(start = dmrscaler_result[[j]]$start_pos, 
+                                      end =  dmrscaler_result[[j]]$stop_pos,
+                                      chromosome = dmrscaler_result[[j]]$chr,
                                       strand = "*", genome = "hg19", name=paste("layer", j, sep = "_"))
   displayPars(layer_track[[j]]) <- list(cex.legend=0.7, cex.axis=0.7, cex.title=0.7, rotation.title=0, stackHeight = 1, shape="box")
 }
