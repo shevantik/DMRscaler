@@ -10,9 +10,9 @@
 
 
 run_MWW_rand_permutation<-function(index_matrix, Beta, num_permutations){
-  export<-c("MWW_rand")
-  noexport<-""
-  MWW_rand<-foreach(i=1:num_permutations, .combine = cbind, .noexport = noexport, .export = export ) %dopar% {
+#  export<-c("MWW_rand")
+#  noexport<-""
+  MWW_rand<-foreach(i=1:num_permutations, .combine = cbind) %dopar% {
     rand_0_index<-which(index_matrix[,i]==0)
     rand_1_index<-which(index_matrix[,i]==1)
     p_val_rand<-vector(mode = "numeric", length = nrow(Beta))
