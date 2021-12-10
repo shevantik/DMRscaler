@@ -18,9 +18,9 @@
 #'
 
 dmrscaler <- function(locs,
-                      locs_pval_cutoff = 0.01,
+                      locs_pval_cutoff = 0.05,
                       region_signif_method = c("fwer","fdr","p-value"),
-                      region_signif_cutoff = 0.05,
+                      region_signif_cutoff = 0.01,
                       layer_type = c("k_nearest", "genomic_width"),
                       layer_sizes = c(1,2,4,8,16,32,64),
                       dmr_constraint_list = NULL,
@@ -41,22 +41,24 @@ dmrscaler <- function(locs,
   stopifnot( region_signif_cutoff > 0 & region_signif_cutoff < 1 )
   stopifnot( all(layer_sizes > 0) )
 
+  ## update locs to remove signal from locs with -log(p) < -log(cutoff) and set rank
+  locs$pval[which(locs$pval > locs_pval_cutoff)] <- 1 ## set -log(p) to 0 if p is above cutoff
+  locs$pval_rank <- rank(-locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
+
   ## organize locs into list of dataframes where each dataframe is from a unique chr
-  temp <- list()
+  locs_list <- list()
   for(chr in unique(locs$chr)){
-    temp[[chr]] <- locs[which(locs$chr==chr),c("pos","pval")] ## separate locs by chromosome
-    temp[[chr]] <- temp[[chr]][order(temp[[chr]]$pos),] ## order locs by position
-    rownames(temp[[chr]]) <- NULL
+    locs_list[[chr]] <- locs[which(locs$chr==chr),c("pos","pval")] ## separate locs by chromosome
+    locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$pos),] ## order locs by position
+    rownames(locs_list[[chr]]) <- NULL
   }
-  locs <- temp; rm(temp)
 
   ## build the primary output object i.e. dmr_layer_list
   dmr_layer_list <- list()
   for(layer_index in 1:length(layer_sizes)){
-    temp_dmr_layer <- foreach(layer = locs) %dopar% {
+    temp_dmr_layer <- foreach(layer = locs_list) %dopar% {
       ### for each chromosome run independently
       ## this is where bulk of identifying dmrs will occur
-
     }
   }
 
