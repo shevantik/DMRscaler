@@ -129,6 +129,7 @@ cltable <- DMRscaler::write_CLT_lookup_table(num_reps = clt_reps ,
                                              clt_numCGs = c(2, 5, 10, 25, 50))
 locs$chr <- as.factor(locs$chr)
 locs$scoring_values <- mwr$p_val
+locs$pval <- mwr$p_val
 ```
 
 

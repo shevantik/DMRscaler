@@ -9,37 +9,63 @@
 #' @param layer_type specifies  one of "k_nearest" or "genomic_width"
 #' @param layer_sizes vector of window size for each layer where layer_type determines whether this represents the genomic_width of windows or the k_nearest neighbors that compose a window
 #' @param dmr_constraint_list (ADD LATER)(optional) a list of rules that further constrains the definition of a differentially methylated region
-#' @export
+#' @param output_type one of "simple" or "complete" where "simple" returns only the topmost layer as a dataframe of dmrs and "complete" returns a list of dataframes of dmrs that were called at and/or propegated up through each layer
+#'
+#' @importFrom foreach foreach
+#' @importFrom foreach %dopar%
+#'
+#' @return dmrscaler returns a list of dmrs at each layer
 #'
 
-
-
 dmrscaler <- function(locs,
-                      loc_signif_method = c("fdr","p-value"),
-                      loc_signif_cutoff = 0.10,
+                      locs_pval_cutoff = 0.01,
                       region_signif_method = c("fwer","fdr","p-value"),
                       region_signif_cutoff = 0.05,
                       layer_type = c("k_nearest", "genomic_width"),
                       layer_sizes = c(1,2,4,8,16,32,64),
-                      dmr_constraint_list = NULL
+                      dmr_constraint_list = NULL,
+                      output_type = c("simple", "complete")
                       ){
 
   ### check input parameters are valid
   if( !all(is.element(c("chr","pos","pval"), colnames(locs))) ){
     stop("ERROR: locs must include column names: \"chr\",\"pos\",\"pval\". ")
   }
-  stopifnot( !is.na(pmatch(loc_signif_method, c("fdr","p-value") )) )
-  loc_signif_method <- match.arg(loc_signif_method)
   stopifnot( !is.na(pmatch(region_signif_method, c("fwer","fdr","p-value")) ))
   region_signif_method <- match.arg(region_signif_method)
   stopifnot( !is.na(pmatch(layer_type, c("k_nearest","genomic_width")) ))
   layer_type <- match.arg(layer_type)
-  stopifnot( loc_signif_cutoff > 0 & loc_signif_cutoff < 1 )
+  stopifnot( !is.na(pmatch(output_type, c("simple","complete")) ))
+  output_type <- match.arg(output_type)
+  stopifnot( locs_pval_cutoff > 0 & locs_pval_cutoff < 1 )
   stopifnot( region_signif_cutoff > 0 & region_signif_cutoff < 1 )
   stopifnot( all(layer_sizes > 0) )
 
-  ##
+  ## organize locs into list of dataframes where each dataframe is from a unique chr
+  temp <- list()
+  for(chr in unique(locs$chr)){
+    temp[[chr]] <- locs[which(locs$chr==chr),c("pos","pval")] ## separate locs by chromosome
+    temp[[chr]] <- temp[[chr]][order(temp[[chr]]$pos),] ## order locs by position
+    rownames(temp[[chr]]) <- NULL
+  }
+  locs <- temp; rm(temp)
 
+  ## build the primary output object i.e. dmr_layer_list
+  dmr_layer_list <- list()
+  for(layer_index in 1:length(layer_sizes)){
+    temp_dmr_layer <- foreach(layer = locs) %dopar% {
+      ### for each chromosome run independently
+      ## this is where bulk of identifying dmrs will occur
+
+    }
+  }
+
+  ## return output
+  if(output_type == "simple"){
+    return( dmr_layer_list[[length(dmr_layer_list)]])
+  } else if(output_type == "complete"){
+    return( dmr_layer_list)
+  } else {return(-1)}
 }
 
 

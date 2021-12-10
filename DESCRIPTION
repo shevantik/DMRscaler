@@ -1,13 +1,19 @@
 Package: DMRscaler
 Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R: 
-    person(given = "Leroy",
-           family = "Bondhus",
-           role = c("aut", "cre"),
-           email = "bondh185@g.ucla.edu",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
+Version: 0.0.0.9001
+Authors@R:
+	person(given = "Leroy",
+		family = "Bondhus",
+		role = c("aut", "cre"),
+		email = "bondh185@g.ucla.edu",
+		comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: DMRscaler is a method for identifying regions of differential methylation that exist across the full range of epigenetic scale whether those regions are only several basepairs in size or spanning whole chromosomes. 
+Depends:
+	R (>= 4.1.1),
+Imports:
+	doParallel,
+	foreach
+Suggests:
 License: MIT + file LICENSE 
 Encoding: UTF-8
 LazyData: true
