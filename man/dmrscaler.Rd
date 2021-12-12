@@ -6,12 +6,36 @@
 \usage{
 dmrscaler(
   locs,
-  layer_sizes = c(4, 8, 16, 32, 64),
-  layer_step_fracs = NA,
-  fdrscaler,
-  cltable,
-  signif_cutoff = "0.9999"
+  locs_pval_cutoff = 0.05,
+  region_signif_method = c("fwer", "fdr", "p-value"),
+  region_signif_cutoff = 0.01,
+  layer_type = c("k_nearest", "genomic_width"),
+  layer_sizes = c(1, 2, 4, 8, 16, 32, 64),
+  dmr_constraint_list = NULL,
+  output_type = c("simple", "complete")
 )
+}
+\arguments{
+\item{locs}{dataframe of measured CpG loci with columns as "chr", "pos", "pval"}
+
+\item{region_signif_method}{one of "p-value" or "fdr" (false discovery rate) or "fwer" (family-wise error rate)}
+
+\item{region_signif_cutoff}{p-value or fwer at which regions are considered significant or desired fdr is achieved for regions}
+
+\item{layer_type}{specifies  one of "k_nearest" or "genomic_width"}
+
+\item{layer_sizes}{vector of window size for each layer where layer_type determines whether this represents the genomic_width of windows or the k_nearest neighbors that compose a window}
+
+\item{dmr_constraint_list}{(ADD LATER)(optional) a list of rules that further constrains the definition of a differentially methylated region}
+
+\item{output_type}{one of "simple" or "complete" where "simple" returns only the topmost layer as a dataframe of dmrs and "complete" returns a list of dataframes of dmrs that were called at and/or propegated up through each layer}
+
+\item{loc_signif_method}{one of "p-value" or "fdr" (false discovery rate)}
+
+\item{loc_signif_cutoff}{p-value at which individual CpGs are considered significant or desired fdr is achieved for individual CpGs}
+}
+\value{
+dmrscaler returns a list of dmrs at each layer
 }
 \description{
 dmrscaler

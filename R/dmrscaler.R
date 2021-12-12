@@ -43,22 +43,28 @@ dmrscaler <- function(locs,
 
   ## update locs to remove signal from locs with -log(p) < -log(cutoff) and set rank
   locs$pval[which(locs$pval > locs_pval_cutoff)] <- 1 ## set -log(p) to 0 if p is above cutoff
-  locs$pval_rank <- rank(-locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
+  locs$pval_rank <- rank(locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
 
   ## organize locs into list of dataframes where each dataframe is from a unique chr
   locs_list <- list()
   for(chr in unique(locs$chr)){
-    locs_list[[chr]] <- locs[which(locs$chr==chr),c("pos","pval")] ## separate locs by chromosome
+    locs_list[[chr]] <- locs[which(locs$chr==chr),c("pos","pval","pval_rank")] ## separate locs by chromosome
     locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$pos),] ## order locs by position
     rownames(locs_list[[chr]]) <- NULL
   }
 
   ## build the primary output object i.e. dmr_layer_list
-  dmr_layer_list <- list()
-  for(layer_index in 1:length(layer_sizes)){
-    temp_dmr_layer <- foreach(layer = locs_list) %dopar% {
-      ### for each chromosome run independently
-      ## this is where bulk of identifying dmrs will occur
+  dmr_layer_list <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
+    ### first call features in layer using independently of all other layer
+    for(layer_index in 1:length(layer_sizes)){
+      which_signif <- which(chr_locs$pval < locs_pval_cutoff)
+      layer_size <- layer_sizes[layer_index]
+      while(TRUE){
+
+      }
+
+      ## test significance with window size given
+      ## use series of hypergeometric tests for significance
     }
   }
 
