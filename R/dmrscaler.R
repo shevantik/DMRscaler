@@ -44,6 +44,7 @@ dmrscaler <- function(locs,
   ## update locs to remove signal from locs with -log(p) < -log(cutoff) and set rank
   locs$pval[which(locs$pval > locs_pval_cutoff)] <- 1 ## set -log(p) to 0 if p is above cutoff
   locs$pval_rank <- rank(locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
+  total_locs <- nrow(locs)
 
   ## organize locs into list of dataframes where each dataframe is from a unique chr
   locs_list <- list()
@@ -60,17 +61,24 @@ dmrscaler <- function(locs,
       window_size <- window_sizes[window_index]
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
-      next_signif_index <- which_signif[which_signif_index]
       while(TRUE){
+        next_signif_index <- which_signif[which_signif_index]
         if(next_signif_index+1 > nrow(chr_locs)){ ## if at end of array, ensure last dmr is recorded and exit loop
+          RECORD_LAST_DMR_HERE
           break
         }
         window_locs <- chr_locs[(next_signif_index+1):min(next_signif_index+window_size, nrow(chr_locs)), ]
-        if(!any(window_locs$pval < locs_pval_cutoff)){}
-      }
+        if(!any(window_locs$pval < locs_pval_cutoff)){which_signif_index <- which_signif_index + 1; next;}
+        window_locs <-  window_locs[1:max(which(window_locs$pval < locs_pval_cutoff) ),]
 
-      ## test significance with window size given
-      ## use series of hypergeometric tests for significance
+        ## use series of hypergeometric tests for significance
+        window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)]
+        window_signif <- 1
+        for(i in length(window_loc_ranks):1 ){
+          window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=total_locs, k=i)
+        }
+
+      }
     }
   }
 
