@@ -61,13 +61,14 @@ dmrscaler <- function(locs,
       window_size <- window_sizes[window_index]
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
+      next_dmr <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
       while(TRUE){
-        next_signif_index <- which_signif[which_signif_index]
-        if(next_signif_index+1 > nrow(chr_locs)){ ## if at end of array, ensure last dmr is recorded and exit loop
+        next_signif_index <- ifelse(which_signif_index > length(which_signif), -1, which_signif[which_signif_index])
+        if(next_signif_index+1 > nrow(chr_locs) | next_signif_index == -1){ ## if at end of array, ensure last dmr is recorded and exit loop
           RECORD_LAST_DMR_HERE
           break
         }
-        window_locs <- chr_locs[(next_signif_index+1):min(next_signif_index+window_size, nrow(chr_locs)), ]
+        window_locs <- chr_locs[(next_signif_index+1):min(next_signif_index+max(1,window_size-1), nrow(chr_locs)), ]
         if(!any(window_locs$pval < locs_pval_cutoff)){which_signif_index <- which_signif_index + 1; next;}
         window_locs <-  window_locs[1:max(which(window_locs$pval < locs_pval_cutoff) ),]
 
@@ -77,6 +78,14 @@ dmrscaler <- function(locs,
         for(i in length(window_loc_ranks):1 ){
           window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=total_locs, k=i)
         }
+        if(window_signif < region_signif_cutoff){
+          next_dmr$start <- chr_locs$pos[next_signif_index]
+          ## check neighboring window if sig add and check neighbring window until not
+          ##                          if not sig, check if expanding retains significance then done
+        } else {
+          which_signif_index <- which_signif_index + 1; next;
+        }
+
 
       }
     }
