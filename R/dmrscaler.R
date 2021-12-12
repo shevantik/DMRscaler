@@ -6,8 +6,8 @@
 #' @param loc_signif_cutoff p-value at which individual CpGs are considered significant or desired fdr is achieved for individual CpGs
 #' @param region_signif_method one of "p-value" or "fdr" (false discovery rate) or "fwer" (family-wise error rate)
 #' @param region_signif_cutoff p-value or fwer at which regions are considered significant or desired fdr is achieved for regions
-#' @param layer_type specifies  one of "k_nearest" or "genomic_width"
-#' @param layer_sizes vector of window size for each layer where layer_type determines whether this represents the genomic_width of windows or the k_nearest neighbors that compose a window
+#' @param window_type specifies  one of "k_nearest" or "genomic_width"
+#' @param window_sizes vector of window size for each layer where window_type determines whether this represents the genomic_width of windows or the k_nearest neighbors that compose a window
 #' @param dmr_constraint_list (ADD LATER)(optional) a list of rules that further constrains the definition of a differentially methylated region
 #' @param output_type one of "simple" or "complete" where "simple" returns only the topmost layer as a dataframe of dmrs and "complete" returns a list of dataframes of dmrs that were called at and/or propegated up through each layer
 #'
@@ -21,8 +21,8 @@ dmrscaler <- function(locs,
                       locs_pval_cutoff = 0.05,
                       region_signif_method = c("fwer","fdr","p-value"),
                       region_signif_cutoff = 0.01,
-                      layer_type = c("k_nearest", "genomic_width"),
-                      layer_sizes = c(1,2,4,8,16,32,64),
+                      window_type = c("k_nearest", "genomic_width"),
+                      window_sizes = c(1,2,4,8,16,32,64),
                       dmr_constraint_list = NULL,
                       output_type = c("simple", "complete")
                       ){
@@ -33,13 +33,13 @@ dmrscaler <- function(locs,
   }
   stopifnot( !is.na(pmatch(region_signif_method, c("fwer","fdr","p-value")) ))
   region_signif_method <- match.arg(region_signif_method)
-  stopifnot( !is.na(pmatch(layer_type, c("k_nearest","genomic_width")) ))
-  layer_type <- match.arg(layer_type)
+  stopifnot( !is.na(pmatch(window_type, c("k_nearest","genomic_width")) ))
+  window_type <- match.arg(window_type)
   stopifnot( !is.na(pmatch(output_type, c("simple","complete")) ))
   output_type <- match.arg(output_type)
   stopifnot( locs_pval_cutoff > 0 & locs_pval_cutoff < 1 )
   stopifnot( region_signif_cutoff > 0 & region_signif_cutoff < 1 )
-  stopifnot( all(layer_sizes > 0) )
+  stopifnot( all(window_sizes >= 1 ) )
 
   ## update locs to remove signal from locs with -log(p) < -log(cutoff) and set rank
   locs$pval[which(locs$pval > locs_pval_cutoff)] <- 1 ## set -log(p) to 0 if p is above cutoff
@@ -56,11 +56,17 @@ dmrscaler <- function(locs,
   ## build the primary output object i.e. dmr_layer_list
   dmr_layer_list <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
     ### first call features in layer using independently of all other layer
-    for(layer_index in 1:length(layer_sizes)){
+    for(window_index in 1:length(window_sizes)){
+      window_size <- window_sizes[window_index]
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
-      layer_size <- layer_sizes[layer_index]
+      which_signif_index <- 1
+      next_signif_index <- which_signif[which_signif_index]
       while(TRUE){
-
+        if(next_signif_index+1 > nrow(chr_locs)){ ## if at end of array, ensure last dmr is recorded and exit loop
+          break
+        }
+        window_locs <- chr_locs[(next_signif_index+1):min(next_signif_index+window_size, nrow(chr_locs)), ]
+        if(!any(window_locs$pval < locs_pval_cutoff)){}
       }
 
       ## test significance with window size given
