@@ -57,6 +57,7 @@ dmrscaler <- function(locs,
   ## build the primary output object i.e. dmr_layer_list
   dmr_layer_list <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
     ### first call features in layer using independently of all other layer
+    dmrs_list <- list()
     for(window_index in 1:length(window_sizes)){
       window_size <- window_sizes[window_index]
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
@@ -108,7 +109,9 @@ dmrscaler <- function(locs,
 
 
       }
+      dmrs_list[[window_index]] <- dmrs
     }
+    dmrs_list
   }
 
   ## return output
