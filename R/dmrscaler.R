@@ -22,7 +22,7 @@ dmrscaler <- function(locs,
                       region_signif_method = c("fwer","fdr","p-value"),
                       region_signif_cutoff = 0.01,
                       window_type = c("k_nearest", "genomic_width"),
-                      window_sizes = c(1,2,4,8,16,32,64),
+                      window_sizes = c(2,4,8,16,32,64),
                       dmr_constraint_list = NULL,
                       output_type = c("simple", "complete")
 ){
@@ -39,7 +39,7 @@ dmrscaler <- function(locs,
   output_type <- match.arg(output_type)
   stopifnot( locs_pval_cutoff > 0 & locs_pval_cutoff < 1 )
   stopifnot( region_signif_cutoff > 0 & region_signif_cutoff < 1 )
-  stopifnot( all(window_sizes >= 1 ) )
+  stopifnot( all(window_sizes >= 2 ) )
 
   ## update locs to remove signal from locs with -log(p) < -log(cutoff) and set rank
   locs$pval[which(locs$pval > locs_pval_cutoff)] <- 1 ## set -log(p) to 0 if p is above cutoff
@@ -61,53 +61,37 @@ dmrscaler <- function(locs,
     window_size <- window_sizes[window_index]
     dmr_layer_list[[window_index]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
       ### first call features in layer using independently of all other layer
+      chr_locs$in_dmr <- F
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
       dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
       next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
-      left_signif_index <- -1
 
+      ### paint all locs that are in a window that has significance < region_signif_cutoff
       while(TRUE){
         current_signif_index <- ifelse(which_signif_index > length(which_signif), -1, which_signif[which_signif_index])
-        left_signif_index <- ifelse(left_signif_index == -1, current_signif_index, left_signif_index)
         which_signif_index <- which_signif_index + 1
-        right_signif_index <- ifelse(which_signif_index > length(which_signif), -1, which_signif[which_signif_index])
-        ## test whether at end of array of significant locs, if yes record last significant region and break
-        if(current_signif_index == -1 | right_signif_index == -1 ){
-          if(nrow(next_dmr) > 0){
-            dmrs <- rbind(dmrs, next_dmr)
-          }
-          break
-        }
+        ## test whether at end of array of significant locs, if yes break
+        if(current_signif_index == -1 ){ break }
+        right_index <- min( nrow(chr_locs), current_signif_index+window_size-1)
+        right_signif_index <- max(intersect( which_signif, current_signif_index:right_index ))
+        if(right_signif_index == current_signif_index){ next }
 
-        ## stopping case for individual region: window does not contain any additional significant locs
-        if(right_signif_index - current_signif_index > window_size){ ## extending region would not include any additional signif locs
-          if(!all(next_dmr == -1)){
-            dmrs <- rbind(dmrs, next_dmr)
-            next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
-          }
-          left_signif_index <- -1
-          next
-        }
-
-        window_locs <- chr_locs[left_signif_index:right_signif_index,]
         ## use series of hypergeometric tests for significance
+        window_locs <- chr_locs[current_signif_index:right_index,]
         window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]  # [-1] drops most signif loc. Most signif loc serves as prior
-
         window_signif <- 1
         n <- total_locs
         for(i in length(window_loc_ranks):1 ){
           window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=i)
           n <- window_loc_ranks[i]-1
         }
-
         if(window_signif < region_signif_cutoff){
-          next_dmr$start <- chr_locs$pos[left_signif_index]
-          next_dmr$stop <- chr_locs$pos[right_signif_index]
-          next_dmr$pval_region <- window_signif
-          next
-        } else { next }
+          chr_locs$in_dmr[current_signif_index:right_signif_index] <- TRUE
+        }
+      }
 
+      for(i in 1:nrow(chr_locs)){
 
       }
       dmrs
