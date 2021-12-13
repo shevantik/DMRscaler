@@ -61,30 +61,45 @@ dmrscaler <- function(locs,
       window_size <- window_sizes[window_index]
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
-      next_dmr <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
+      dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
+      next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
+      left_signif_index <- -1
       while(TRUE){
-        next_signif_index <- ifelse(which_signif_index > length(which_signif), -1, which_signif[which_signif_index])
-        if(next_signif_index+1 > nrow(chr_locs) | next_signif_index == -1){ ## if at end of array, ensure last dmr is recorded and exit loop
-          RECORD_LAST_DMR_HERE
+        current_signif_index <- ifelse(which_signif_index > length(which_signif), -1, which_signif[which_signif_index])
+        left_signif_index <- ifelse(left_signif_index == -1, current_signif_index, left_signif_index)
+        which_signif_index <- which_signif_index + 1
+        right_signif_index <- ifelse(which_signif_index > length(which_signif), -1, which_signif[which_signif_index])
+        ## test whether at end of array of significant locs, if yes record last significant region and break
+        if(current_signif_index == -1 | right_signif_index == -1 ){
+          if(nrow(next_dmr) > 0){
+            dmrs <- rbind(dmrs, next_dmr)
+          }
           break
         }
-        window_locs <- chr_locs[(next_signif_index+1):min(next_signif_index+max(1,window_size-1), nrow(chr_locs)), ]
-        if(!any(window_locs$pval < locs_pval_cutoff)){which_signif_index <- which_signif_index + 1; next;}
-        window_locs <-  window_locs[1:max(which(window_locs$pval < locs_pval_cutoff) ),]
-
+        ## stopping case for individual region: window does not contain any additional significant locs
+        if(right_signif_index - current_signif_index > window_size){ ## extending region would not include any additional signif locs
+          if(!all(next_dmr == -1)){
+            dmrs <- rbind(dmrs, next_dmr)
+            next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
+          }
+          left_signif_index <- -1
+          next
+        }
+        window_locs <- chr_locs[left_signif_index:right_signif_index,]
         ## use series of hypergeometric tests for significance
-        window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)]
+        window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]  # [-1] drops most signif loc. Most signif loc serves as prior
         window_signif <- 1
+        n <- total_locs
         for(i in length(window_loc_ranks):1 ){
-          window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=total_locs, k=i)
+          window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=i)
+          n <- window_loc_ranks[i]-1
         }
         if(window_signif < region_signif_cutoff){
-          next_dmr$start <- chr_locs$pos[next_signif_index]
-          ## check neighboring window if sig add and check neighbring window until not
-          ##                          if not sig, check if expanding retains significance then done
-        } else {
-          which_signif_index <- which_signif_index + 1; next;
-        }
+          next_dmr$start <- chr_locs$pos[left_signif_index]
+          next_dmr$stop <- chr_locs$pos[right_signif_index]
+          next_dmr$pval_region <- window_signif
+          next
+        } else { next }
 
 
       }
