@@ -51,6 +51,9 @@ dmrscaler <- function(locs,
   for(chr in unique(locs$chr)){
     locs_list[[chr]] <- locs[which(locs$chr==chr),c("pos","pval","pval_rank")] ## separate locs by chromosome
     locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$pos),] ## order locs by position
+    locs_list[[chr]]$start <- locs_list[[chr]]$pos
+    locs_list[[chr]]$stop <- locs_list[[chr]]$pos
+    locs_list[[chr]]$pos <- NULL
     rownames(locs_list[[chr]]) <- NULL
   }
 
@@ -59,7 +62,8 @@ dmrscaler <- function(locs,
   dmr_layer_list <- list()
   for(window_index in 1:length(window_sizes)){
     window_size <- window_sizes[window_index]
-    dmr_layer_list[[window_index]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
+    layer_name <- paste(window_size,"_loc_window_layer", sep="")
+    dmr_layer_list[[layer_name]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
       ### first call features in layer using independently of all other layer
       chr_locs$in_dmr <- F
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
@@ -89,22 +93,26 @@ dmrscaler <- function(locs,
         }
       }
 
+      ## build dmrs
+      ## add dmrs ranges
       dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
       next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
       for(i in 1:nrow(chr_locs)){
         if(chr_locs$in_dmr[i]){
           if(next_dmr$start == -1){
-            next_dmr$start <- chr_locs$pos[i]
+            next_dmr$start <- chr_locs$start[i]
           }
           if( i+1 > nrow(chr_locs) | !chr_locs$in_dmr[i+1] ){
-            next_dmr$stop <- chr_locs$pos[i]
+            next_dmr$stop <- chr_locs$stop[i]
             dmrs <- rbind(dmrs, next_dmr)
             next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
           }
         }
       }
+
+      ## add dmrs significance
       for(i in 1:nrow(dmrs)){
-        window_locs <- chr_locs[which(chr_locs$pos==dmrs$start[i]):which(chr_locs$pos==dmrs$stop[i]),]
+        window_locs <- chr_locs[which(chr_locs$start==dmrs$start[i]):which(chr_locs$stop==dmrs$stop[i]),]
         window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]
         window_signif <- 1
         n <- total_locs
@@ -115,10 +123,44 @@ dmrscaler <- function(locs,
         dmrs$pval_region[i] <- window_signif
 
       }
-
       dmrs
+    } ## end foreach
+
+    ## update locs_list to replace locs added to dmrs with meta-locs
+    for(chr in names(locs_list) ){
+      dmrs <- dmr_layer_list[[layer_name]][[chr]]
+      temp_locs <- locs_list[[chr]]
+      for(i in 1:nrow(dmrs)){
+        # remove all locs contained in dmr and replace with the dmr in locs_list (e.g. a meta_loc)
+        which <- which(temp_locs$start == dmrs$start[i]):which(temp_locs$stop==dmrs$stop[i])
+        temp_locs[which[1],] <- data.frame("pval"=dmrs$pval_region[i], "pval_rank"=-1,"start"=dmrs$start[i],"stop"=dmrs$stop[i])
+        temp_locs[which[-1],] <- NA
+      }
+      temp_locs <- temp_locs[complete.cases(temp_locs),]
+      locs_list[[chr]] <- temp_locs
     }
+
+    ## update pval_rank to reflect consolidation of locs into meta_locs
+    temp_locs <- data.frame("pval"=numeric(),"pval_rank"=numeric(),"start"=numeric(),"stop"=numeric(),"chr"=character())
+    for(chr in names(locs_list)){
+      temp_temp_locs <- locs_list[[chr]]
+      temp_temp_locs$chr <- chr
+      temp_locs <- rbind(temp_locs, temp_temp_locs)
+    }
+    temp_locs$pval_rank <- rank(temp_locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
+    ## update total_locs to reflect consolidation of locs into meta_locs
+    total_locs <- nrow(temp_locs)
+
+    ## update locs_list with updated pval_ranks
+    locs_list <- list()
+    for(chr in unique(temp_locs$chr)){
+      locs_list[[chr]] <- temp_locs[which(temp_locs$chr==chr),] ## separate locs by chromosome
+      locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$start),] ## order locs by position
+      rownames(locs_list[[chr]]) <- NULL
+    }
+
   }
+
 
   ## return output
   if(output_type == "simple"){
