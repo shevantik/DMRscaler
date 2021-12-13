@@ -25,7 +25,7 @@ dmrscaler <- function(locs,
                       window_sizes = c(1,2,4,8,16,32,64),
                       dmr_constraint_list = NULL,
                       output_type = c("simple", "complete")
-                      ){
+){
 
   ### check input parameters are valid
   if( !all(is.element(c("chr","pos","pval"), colnames(locs))) ){
@@ -54,12 +54,13 @@ dmrscaler <- function(locs,
     rownames(locs_list[[chr]]) <- NULL
   }
 
+
   ## build the primary output object i.e. dmr_layer_list
-  dmr_layer_list <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
-    ### first call features in layer using independently of all other layer
-    dmrs_list <- list()
-    for(window_index in 1:length(window_sizes)){
-      window_size <- window_sizes[window_index]
+  dmr_layer_list <- list()
+  for(window_index in 1:length(window_sizes)){
+    window_size <- window_sizes[window_index]
+    dmr_layer_list[[window_index]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
+      ### first call features in layer using independently of all other layer
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
       dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
@@ -109,9 +110,8 @@ dmrscaler <- function(locs,
 
 
       }
-      dmrs_list[[window_index]] <- dmrs
+      dmrs
     }
-    dmrs_list
   }
 
   ## return output
