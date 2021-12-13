@@ -64,8 +64,6 @@ dmrscaler <- function(locs,
       chr_locs$in_dmr <- F
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
-      dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
-      next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
 
       ### paint all locs that are in a window that has significance < region_signif_cutoff
       while(TRUE){
@@ -91,9 +89,33 @@ dmrscaler <- function(locs,
         }
       }
 
+      dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
+      next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
       for(i in 1:nrow(chr_locs)){
+        if(chr_locs$in_dmr[i]){
+          if(next_dmr$start == -1){
+            next_dmr$start <- chr_locs$pos[i]
+          }
+          if( i+1 > nrow(chr_locs) | !chr_locs$in_dmr[i+1] ){
+            next_dmr$stop <- chr_locs$pos[i]
+            dmrs <- rbind(dmrs, next_dmr)
+            next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
+          }
+        }
+      }
+      for(i in 1:nrow(dmrs)){
+        window_locs <- chr_locs[which(chr_locs$pos==dmrs$start[i]):which(chr_locs$pos==dmrs$stop[i]),]
+        window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]
+        window_signif <- 1
+        n <- total_locs
+        for(j in length(window_loc_ranks):1 ){
+          window_signif = window_signif * dhyper(x=j, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=j)
+          n <- window_loc_ranks[j]-1
+        }
+        dmrs$pval_region[i] <- window_signif
 
       }
+
       dmrs
     }
   }
