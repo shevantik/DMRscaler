@@ -81,12 +81,15 @@ dmrscaler <- function(locs,
 
         ## use series of hypergeometric tests for significance
         window_locs <- chr_locs[current_signif_index:right_index,]
+        window_locs <- window_locs[which(window_locs$pval < 1),] ## only retain significant locs, if pval==1, loop will multiple window_signif by 1 (doing nothing)
         window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]  # [-1] drops most signif loc. Most signif loc serves as prior
         window_signif <- 1
         n <- total_locs
+        k <- length(current_signif_index:right_index)-1  ## realized window_size minus most signif loc
         for(i in length(window_loc_ranks):1 ){
-          window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=i)
+          window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k)
           n <- window_loc_ranks[i]-1
+          k <- i-1
         }
         if(window_signif < region_signif_cutoff){
           chr_locs$in_dmr[current_signif_index:right_signif_index] <- TRUE
@@ -117,8 +120,9 @@ dmrscaler <- function(locs,
           window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]
           window_signif <- 1
           n <- total_locs
+          k <- window_size
           for(j in length(window_loc_ranks):1 ){
-            window_signif = window_signif * dhyper(x=j, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=j)
+            window_signif = window_signif * dhyper(x=j, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=k)
             n <- window_loc_ranks[j]-1
           }
           dmrs$pval_region[i] <- window_signif
