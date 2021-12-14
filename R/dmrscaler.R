@@ -51,7 +51,7 @@ dmrscaler <- function(locs,
   for(chr in unique(locs$chr)){
     locs_list[[chr]] <- locs[which(locs$chr==chr),c("pos","pval","pval_rank")] ## separate locs by chromosome
     locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$pos),] ## order locs by position
-    locs_list[[chr]]$start <- locs_list[[chr]]$pos
+    locs_list[[chr]]$start <- locs_list[[chr]]$pos  ## change pos to start and stop positions - generalized to work with meta_locs
     locs_list[[chr]]$stop <- locs_list[[chr]]$pos
     locs_list[[chr]]$pos <- NULL
     rownames(locs_list[[chr]]) <- NULL
@@ -111,18 +111,21 @@ dmrscaler <- function(locs,
       }
 
       ## add dmrs significance
-      for(i in 1:nrow(dmrs)){
-        window_locs <- chr_locs[which(chr_locs$start==dmrs$start[i]):which(chr_locs$stop==dmrs$stop[i]),]
-        window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]
-        window_signif <- 1
-        n <- total_locs
-        for(j in length(window_loc_ranks):1 ){
-          window_signif = window_signif * dhyper(x=j, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=j)
-          n <- window_loc_ranks[j]-1
-        }
-        dmrs$pval_region[i] <- window_signif
+      if(nrow(dmrs) > 0 ){ ## need to test whether any dmrs were found
+        for(i in 1:nrow(dmrs)){
+          window_locs <- chr_locs[which(chr_locs$start==dmrs$start[i]):which(chr_locs$stop==dmrs$stop[i]),]
+          window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]
+          window_signif <- 1
+          n <- total_locs
+          for(j in length(window_loc_ranks):1 ){
+            window_signif = window_signif * dhyper(x=j, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=j)
+            n <- window_loc_ranks[j]-1
+          }
+          dmrs$pval_region[i] <- window_signif
 
+        }
       }
+
       dmrs
     } ## end foreach
 
@@ -130,6 +133,7 @@ dmrscaler <- function(locs,
     for(chr in names(locs_list) ){
       dmrs <- dmr_layer_list[[layer_name]][[chr]]
       temp_locs <- locs_list[[chr]]
+      if(nrow(dmrs) == 0){next}
       for(i in 1:nrow(dmrs)){
         # remove all locs contained in dmr and replace with the dmr in locs_list (e.g. a meta_loc)
         which <- which(temp_locs$start == dmrs$start[i]):which(temp_locs$stop==dmrs$stop[i])
