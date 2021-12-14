@@ -113,17 +113,23 @@ dmrscaler <- function(locs,
         }
       }
 
+
+
       ## add dmrs significance
       if(nrow(dmrs) > 0 ){ ## need to test whether any dmrs were found
         for(i in 1:nrow(dmrs)){
           window_locs <- chr_locs[which(chr_locs$start==dmrs$start[i]):which(chr_locs$stop==dmrs$stop[i]),]
+          k <- nrow(window_locs)   ## get current dmr size
+          window_locs <- window_locs[which(window_locs$pval < 1),]
           window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]
           window_signif <- 1
+
           n <- total_locs
-          k <- window_size
+          k <- max(window_size, k)  ## if current dmr size is not as large as window_size, use window_size for signif calc
           for(j in length(window_loc_ranks):1 ){
             window_signif = window_signif * dhyper(x=j, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=k)
             n <- window_loc_ranks[j]-1
+            k <- j-1
           }
           dmrs$pval_region[i] <- window_signif
 
