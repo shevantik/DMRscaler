@@ -175,6 +175,14 @@ dmrscaler <- function(locs,
     }
 
     dmr_layers_list[[layer_name]] <- locs_list
+    for(i in 1:length(dmr_layers_list[[layer_name]])){
+      which <- which(dmr_layers_list[[layer_name]][[i]]$pval != 1)
+      if(length(which) == 0 ){ ## if no significant locs or dmrs layer contains nothing
+        dmr_layers_list[[layer_name]][[i]] <- dmr_layers_list[[layer_name]][[i]][0,]
+      } else{
+        dmr_layers_list[[layer_name]][[i]] <- dmr_layers_list[[layer_name]][[i]][which,]
+      }
+    }
 
   }
 
