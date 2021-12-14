@@ -58,13 +58,13 @@ dmrscaler <- function(locs,
   }
 
 
-  ## build the primary output object i.e. dmr_layer_list
-  dmr_layers_list <- list()
-  dmr_layer_list <- list()
+  ## build the primary output object i.e. dmr_layers_list
+  dmr_layers_list <- list()  ## main output object
   for(window_index in 1:length(window_sizes)){
     window_size <- window_sizes[window_index]
     layer_name <- paste(window_size,"_loc_window_layer", sep="")
-    dmr_layer_list[[layer_name]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
+    dmrs_in_layer <- list() ##
+    dmrs_in_layer[[layer_name]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
       ### first call features in layer using independently of all other layer
       chr_locs$in_dmr <- F
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
@@ -142,7 +142,7 @@ dmrscaler <- function(locs,
 
     ## update locs_list to replace locs added to dmrs with meta-locs
     for(chr in names(locs_list) ){
-      dmrs <- dmr_layer_list[[layer_name]][[chr]]
+      dmrs <- dmrs_in_layer[[layer_name]][[chr]]
       temp_locs <- locs_list[[chr]]
       if(nrow(dmrs) == 0){next}
       for(i in 1:nrow(dmrs)){
@@ -189,9 +189,9 @@ dmrscaler <- function(locs,
 
   ## return output
   if(output_type == "simple"){
-    return( dmr_layer_list[[length(dmr_layer_list)]])
+    return( dmr_layers_list[[length(dmr_layers_list)]])
   } else if(output_type == "complete"){
-    return( dmr_layer_list)
+    return( dmr_layers_list)
   } else {return(-1)}
 }
 
