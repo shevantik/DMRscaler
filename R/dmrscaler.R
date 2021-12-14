@@ -59,6 +59,7 @@ dmrscaler <- function(locs,
 
 
   ## build the primary output object i.e. dmr_layer_list
+  dmr_layers_list <- list()
   dmr_layer_list <- list()
   for(window_index in 1:length(window_sizes)){
     window_size <- window_sizes[window_index]
@@ -172,6 +173,8 @@ dmrscaler <- function(locs,
       locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$start),] ## order locs by position
       rownames(locs_list[[chr]]) <- NULL
     }
+
+    dmr_layers_list[[layer_name]] <- locs_list
 
   }
 
