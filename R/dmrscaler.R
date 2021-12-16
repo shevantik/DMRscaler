@@ -51,10 +51,10 @@ dmrscaler <- function(locs,
   for(chr in unique(locs$chr)){
     locs_list[[chr]] <- locs[which(locs$chr==chr),c("pos","pval","pval_rank")] ## separate locs by chromosome
     locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$pos),] ## order locs by position
-    locs_list[[chr]]$start <- locs_list[[chr]]$pos  ## change pos to start and stop positions - generalized to work with meta_locs
-    locs_list[[chr]]$stop <- locs_list[[chr]]$pos
-    locs_list[[chr]]$pos <- NULL
     rownames(locs_list[[chr]]) <- NULL
+    locs_list[[chr]]$in_dmr <- FALSE
+    locs_list[[chr]]$dmr_id <- NA ## keep track of dmr membership
+
   }
 
 
@@ -66,7 +66,6 @@ dmrscaler <- function(locs,
     dmrs_in_layer <- list() ##
     dmrs_in_layer[[layer_name]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
       ### first call features in layer using independently of all other layer
-      chr_locs$in_dmr <- F
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
 
@@ -76,6 +75,7 @@ dmrscaler <- function(locs,
         which_signif_index <- which_signif_index + 1
         ## test whether at end of array of significant locs, if yes break
         if(current_signif_index == -1 ){ break }
+
         right_index <- min( nrow(chr_locs), current_signif_index+window_size-1)
         right_signif_index <- max(intersect( which_signif, current_signif_index:right_index ))
         if(right_signif_index == current_signif_index){ next }
@@ -83,33 +83,62 @@ dmrscaler <- function(locs,
         ## use series of hypergeometric tests for significance
         window_locs <- chr_locs[current_signif_index:right_index,]
         window_locs <- window_locs[which(window_locs$pval < 1),] ## only retain significant locs, if pval==1, loop will multiple window_signif by 1 (doing nothing)
-        window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]  # [-1] drops most signif loc. Most signif loc serves as prior
-        window_signif <- 1
-        n <- total_locs
-        k <- length(current_signif_index:right_index)-1  ## realized window_size minus most signif loc
-        for(i in length(window_loc_ranks):1 ){
-          window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k)
-          n <- window_loc_ranks[i]-1
-          k <- i-1
+
+        ### UPDATE START: drop each dmr group AND max signif cg sequentially and only return as dmr if ALL are signif ####
+
+        ### if all dmrs already belong to the same dmr, nothing to do
+        if( length(unique(window_locs$dmr_id))==1 & !is.na(window_locs$dmr_id[1]) ){ next }
+
+        ### build groups to sequentially mask
+        if(is.na(window_locs$dmr_id[which.min(window_locs$pval)])){
+          if(all(is.na(window_locs$dmr_id))){
+            window_locs$dmr_id[which.min(window_locs$pval)] <- 1
+          } else {
+            window_locs$dmr_id[which.min(window_locs$pval)] <- max(window_locs$dmr_id)+1
+          }
         }
-        if(window_signif < region_signif_cutoff){
+        ## sequentially mask groups
+        window_all_signif <- TRUE
+        for(mask_id in unique(window_locs$dmr_id[!is.na(window_locs$dmr_id)]) ){
+          which_mask <- which(window_locs$dmr_id==mask_id)
+          window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-which_mask]
+          window_signif <- 1
+          n <- total_locs
+          k <- length(current_signif_index:right_index)-length(which_mask)  ##  window_size minus length mask group
+          for(i in length(window_loc_ranks):1 ){
+            window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k)
+            n <- window_loc_ranks[i]-1
+            k <- i-1
+          }
+          if(window_signif > region_signif_cutoff){
+            window_all_signif <- FALSE
+            break ## if window_signif > region_signif_cutoff for any masked group, region is not altered in current layer
+          }
+        }
+        if(window_all_signif){
           chr_locs$in_dmr[current_signif_index:right_signif_index] <- TRUE
         }
+
+        ### UPDATE END: drop each dmr group AND max signif cg sequentially and only return as dmr if ALL are signif ####
+
+
       }
 
       ## build dmrs
       ## add dmrs ranges
-      dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric() )
-      next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
+      dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric(), dmr_id=numeric() )
+      dmr_counter <- 1
+      next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1,dmr_id=dmr_counter)
       for(i in 1:nrow(chr_locs)){
         if(chr_locs$in_dmr[i]){
           if(next_dmr$start == -1){
-            next_dmr$start <- chr_locs$start[i]
+            next_dmr$start <- chr_locs$pos[i]
           }
           if( i+1 > nrow(chr_locs) | !chr_locs$in_dmr[i+1] ){
-            next_dmr$stop <- chr_locs$stop[i]
+            next_dmr$stop <- chr_locs$pos[i]
             dmrs <- rbind(dmrs, next_dmr)
-            next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1 )
+            dmr_counter <- dmr_counter + 1
+            next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1,dmr_id=dmr_counter )
           }
         }
       }
@@ -119,7 +148,7 @@ dmrscaler <- function(locs,
       ## add dmrs significance
       if(nrow(dmrs) > 0 ){ ## need to test whether any dmrs were found
         for(i in 1:nrow(dmrs)){
-          window_locs <- chr_locs[which(chr_locs$start==dmrs$start[i]):which(chr_locs$stop==dmrs$stop[i]),]
+          window_locs <- chr_locs[which(chr_locs$pos==dmrs$start[i]):which(chr_locs$pos==dmrs$stop[i]),]
           k <- nrow(window_locs)   ## get current dmr size
           window_locs <- window_locs[which(window_locs$pval < 1),]
           window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-1]
@@ -140,49 +169,66 @@ dmrscaler <- function(locs,
       dmrs
     } ## end foreach
 
-    ## update locs_list to replace locs added to dmrs with meta-locs
+
+    ## add unique dmr names to locs in dmr - will to form groups to mask
     for(chr in names(locs_list) ){
       dmrs <- dmrs_in_layer[[layer_name]][[chr]]
       temp_locs <- locs_list[[chr]]
       if(nrow(dmrs) == 0){next}
       for(i in 1:nrow(dmrs)){
         # remove all locs contained in dmr and replace with the dmr in locs_list (e.g. a meta_loc)
-        which <- which(temp_locs$start == dmrs$start[i]):which(temp_locs$stop==dmrs$stop[i])
-        temp_locs[which[1],] <- data.frame("pval"=dmrs$pval_region[i], "pval_rank"=-1,"start"=dmrs$start[i],"stop"=dmrs$stop[i])
-        temp_locs[which[-1],] <- NA
+        which <- which(temp_locs$pos == dmrs$start[i]):which(temp_locs$pos==dmrs$stop[i])
+        temp_locs[which,]$dmr_id <- i
       }
       temp_locs <- temp_locs[complete.cases(temp_locs),]
       locs_list[[chr]] <- temp_locs
     }
 
-    ## update pval_rank to reflect consolidation of locs into meta_locs
-    temp_locs <- data.frame("pval"=numeric(),"pval_rank"=numeric(),"start"=numeric(),"stop"=numeric(),"chr"=character())
-    for(chr in names(locs_list)){
-      temp_temp_locs <- locs_list[[chr]]
-      temp_temp_locs$chr <- chr
-      temp_locs <- rbind(temp_locs, temp_temp_locs)
-    }
-    temp_locs$pval_rank <- rank(temp_locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
-    ## update total_locs to reflect consolidation of locs into meta_locs
-    total_locs <- nrow(temp_locs)
 
-    ## update locs_list with updated pval_ranks
-    locs_list <- list()
-    for(chr in unique(temp_locs$chr)){
-      locs_list[[chr]] <- temp_locs[which(temp_locs$chr==chr),] ## separate locs by chromosome
-      locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$start),] ## order locs by position
-      rownames(locs_list[[chr]]) <- NULL
-    }
 
-    dmr_layers_list[[layer_name]] <- locs_list
-    for(i in 1:length(dmr_layers_list[[layer_name]])){
-      which <- which(dmr_layers_list[[layer_name]][[i]]$pval != 1)
-      if(length(which) == 0 ){ ## if no significant locs or dmrs layer contains nothing
-        dmr_layers_list[[layer_name]][[i]] <- dmr_layers_list[[layer_name]][[i]][0,]
-      } else{
-        dmr_layers_list[[layer_name]][[i]] <- dmr_layers_list[[layer_name]][[i]][which,]
-      }
-    }
+    # ## update locs_list to replace locs added to dmrs with meta-locs
+    # for(chr in names(locs_list) ){
+    #   dmrs <- dmrs_in_layer[[layer_name]][[chr]]
+    #   temp_locs <- locs_list[[chr]]
+    #   if(nrow(dmrs) == 0){next}
+    #   for(i in 1:nrow(dmrs)){
+    #     # remove all locs contained in dmr and replace with the dmr in locs_list (e.g. a meta_loc)
+    #     which <- which(temp_locs$start == dmrs$start[i]):which(temp_locs$stop==dmrs$stop[i])
+    #     temp_locs[which[1],] <- data.frame("pval"=dmrs$pval_region[i], "pval_rank"=-1,"start"=dmrs$start[i],"stop"=dmrs$stop[i])
+    #     temp_locs[which[-1],] <- NA
+    #   }
+    #   temp_locs <- temp_locs[complete.cases(temp_locs),]
+    #   locs_list[[chr]] <- temp_locs
+    # }
+    #
+    # ## update pval_rank to reflect consolidation of locs into meta_locs
+    # temp_locs <- data.frame("pval"=numeric(),"pval_rank"=numeric(),"start"=numeric(),"stop"=numeric(),"chr"=character())
+    # for(chr in names(locs_list)){
+    #   temp_temp_locs <- locs_list[[chr]]
+    #   temp_temp_locs$chr <- chr
+    #   temp_locs <- rbind(temp_locs, temp_temp_locs)
+    # }
+    # temp_locs$pval_rank <- rank(temp_locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
+    # ## update total_locs to reflect consolidation of locs into meta_locs
+    # total_locs <- nrow(temp_locs)
+    #
+    # ## update locs_list with updated pval_ranks
+    # locs_list <- list()
+    # for(chr in unique(temp_locs$chr)){
+    #   locs_list[[chr]] <- temp_locs[which(temp_locs$chr==chr),] ## separate locs by chromosome
+    #   locs_list[[chr]] <- locs_list[[chr]][order(locs_list[[chr]]$start),] ## order locs by position
+    #   rownames(locs_list[[chr]]) <- NULL
+    # }
+    #
+    # dmr_layers_list[[layer_name]] <- locs_list
+    # for(i in 1:length(dmr_layers_list[[layer_name]])){
+    #   which <- which(dmr_layers_list[[layer_name]][[i]]$pval != 1)
+    #   if(length(which) == 0 ){ ## if no significant locs or dmrs layer contains nothing
+    #     dmr_layers_list[[layer_name]][[i]] <- dmr_layers_list[[layer_name]][[i]][0,]
+    #   } else{
+    #     dmr_layers_list[[layer_name]][[i]] <- dmr_layers_list[[layer_name]][[i]][which,]
+    #   }
+    # }
 
   }
 
