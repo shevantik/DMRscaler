@@ -224,6 +224,7 @@ dmrscaler <- function(locs,
             k <- j-1
           }
           dmrs$pval_region[i] <- window_signif
+          ### ADD ADJUSTED PVALUE AS  WELL
         }
       }
       dmrs
