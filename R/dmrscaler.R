@@ -25,7 +25,7 @@ dmrscaler <- function(locs,
                       window_sizes = c(2,4,8,16,32,64),
                       dmr_constraint_list = NULL,
                       output_type = c("simple", "complete")
-){
+){z
 
   # check input parameters are valid
   if( !all(is.element(c("chr","pos","pval"), colnames(locs))) ){
@@ -102,12 +102,13 @@ dmrscaler <- function(locs,
           window_all_signif <- TRUE
           for(mask_id in unique(window_locs$dmr_id[!is.na(window_locs$dmr_id)]) ){
             which_mask <- which(window_locs$dmr_id==mask_id)
-            window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-which_mask]
+            window_loc_ranks <- window_locs$pval_rank[-which_mask]
+            window_loc_ranks <- window_loc_ranks[order(window_loc_ranks)]
             window_signif <- 1
             n <- total_locs
             k <- length(current_signif_index:right_index)-length(which_mask)  ##  window_size minus length mask group
             for(i in length(window_loc_ranks):1 ){
-              window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k)
+              window_signif = window_signif * phyper(q=i-0.01, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k, lower.tail=F)
               n <- window_loc_ranks[i]-1
               k <- i-1
             }
@@ -118,14 +119,16 @@ dmrscaler <- function(locs,
         benjimini_hochberg_windows
       }
 
-       temp <- unname(unlist(benjimini_hochberg_windows))
-       temp <- temp[order(temp)]
-       temp_df <- data.frame("benjamini-hochberg"=temp,"rank"=1:length(temp))
-       temp_df$crit <- region_signif_cutoff * temp_df$rank / length(which(locs$pval<1))
-       temp_df$bh_lt_crit <- temp_df$benjamini.hochberg < temp_df$crit
-       benj_hoch_signif_cutoff <- temp_df$benjamini.hochberg[max(which(temp_df$bh_lt_crit))]
-
-
+      temp <- unname(unlist(benjimini_hochberg_windows))
+      temp <- temp[order(temp)]
+      temp_df <- data.frame("benjamini-hochberg"=temp,"rank"=1:length(temp))
+      temp_df$crit <- region_signif_cutoff * temp_df$rank / length(which(locs$pval<1))
+      temp_df$bh_lt_crit <- temp_df$benjamini.hochberg < temp_df$crit
+      if(length(which(temp_df$bh_lt_crit))==0){
+        benj_hoch_signif_cutoff <- 0
+      } else {
+        benj_hoch_signif_cutoff <- temp_df$benjamini.hochberg[max(which(temp_df$bh_lt_crit))]
+      }
     }
     ### END: Set up benjamini-hochberge ###
 
@@ -165,12 +168,13 @@ dmrscaler <- function(locs,
         window_all_signif <- TRUE
         for(mask_id in unique(window_locs$dmr_id[!is.na(window_locs$dmr_id)]) ){
           which_mask <- which(window_locs$dmr_id==mask_id)
-          window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-which_mask]
+          window_loc_ranks <- window_locs$pval_rank[-which_mask]
+          window_loc_ranks <-  window_loc_ranks[order(window_loc_ranks)]
           window_signif <- 1
           n <- total_locs
           k <- length(current_signif_index:right_index)-length(which_mask)  ##  window_size minus length mask group
           for(i in length(window_loc_ranks):1 ){
-            window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k)
+            window_signif = window_signif * phyper(q=i-0.01, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k, lower.tail=F)
             n <- window_loc_ranks[i]-1
             k <- i-1
           }
@@ -219,7 +223,7 @@ dmrscaler <- function(locs,
           window_signif <- 1
           n <- total_locs
           for(j in length(window_loc_ranks):1 ){
-            window_signif = window_signif * dhyper(x=j, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=k)
+            window_signif = window_signif *phyper(q=j-0.01, m=window_loc_ranks[j], n=max(0,n-window_loc_ranks[j]), k=k, lower.tail=F)
             n <- window_loc_ranks[j]-1
             k <- j-1
           }
