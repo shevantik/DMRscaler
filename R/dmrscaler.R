@@ -19,7 +19,7 @@
 
 dmrscaler <- function(locs,
                       locs_pval_cutoff = 0.05,
-                      region_signif_method = c("fwer","fdr","p-value"),
+                      region_signif_method = c("bonferroni","benjamini-hochberg","p-value"),
                       region_signif_cutoff = 0.01,
                       window_type = c("k_nearest", "genomic_width"),
                       window_sizes = c(2,4,8,16,32,64),
@@ -31,7 +31,7 @@ dmrscaler <- function(locs,
   if( !all(is.element(c("chr","pos","pval"), colnames(locs))) ){
     stop("ERROR: locs must include column names: \"chr\",\"pos\",\"pval\". ")
   }
-  stopifnot( !is.na(pmatch(region_signif_method, c("fwer","fdr","p-value")) ))
+  stopifnot( !is.na(pmatch(region_signif_method, c("bonferroni","benjamini-hochberg","p-value")) ))
   region_signif_method <- match.arg(region_signif_method)
   stopifnot( !is.na(pmatch(window_type, c("k_nearest","genomic_width")) ))
   window_type <- match.arg(window_type)
@@ -45,6 +45,10 @@ dmrscaler <- function(locs,
   locs$pval[which(locs$pval > locs_pval_cutoff)] <- 1 ## set -log(p) to 0 if p is above cutoff
   locs$pval_rank <- rank(locs$pval, ties.method = "max") ## determine rank of each p value, used for region significance
   total_locs <- nrow(locs)
+
+  if(region_signif_method == "bonferroni"){
+    region_signif_cutoff <- region_signif_cutoff/length(which(locs$pval<1))
+  }
 
   # organize locs into list of dataframes where each dataframe is from a unique chr
   locs_list <- list()
@@ -63,10 +67,73 @@ dmrscaler <- function(locs,
   for(window_index in 1:length(window_sizes)){
     window_size <- window_sizes[window_index]
     layer_name <- paste(window_size,"_loc_window_layer", sep="")
+
+
+    ### BEGIN: Set up benjamini-hochberge ###
+    if(region_signif_method=="benjamini-hochberg"){
+      benjimini_hochberg_windows <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
+        benjimini_hochberg_windows <- c()
+        which_signif <- which(chr_locs$pval < locs_pval_cutoff)
+        which_signif_index <- 1
+        ## paint all locs that are in a window that has significance < region_signif_cutoff
+        while(TRUE){
+          current_signif_index <- ifelse(which_signif_index > length(which_signif), -1, which_signif[which_signif_index])
+          which_signif_index <- which_signif_index + 1
+          ### test whether at end of array of significant locs, if yes break
+          if(current_signif_index == -1 ){ break }
+          right_index <- min( nrow(chr_locs), current_signif_index+window_size-1)
+          right_signif_index <- max(intersect( which_signif, current_signif_index:right_index ))
+          if(right_signif_index == current_signif_index){ next }
+          ### use series of hypergeometric tests for significance
+          window_locs <- chr_locs[current_signif_index:right_index,]
+          window_locs <- window_locs[which(window_locs$pval < 1),] ## only retain significant locs, if pval==1, loop will multiple window_signif by 1 (doing nothing)
+          #### if all dmrs already belong to the same dmr, nothing to do
+          if( length(unique(window_locs$dmr_id))==1 & !all(is.na(window_locs$dmr_id)) ){ next }
+          #### build groups to sequentially mask
+          if(any(is.na(window_locs$dmr_id))){
+            which <- which.min( window_locs$pval[which(is.na(window_locs$dmr_id) )] )
+            if(all(is.na(window_locs$dmr_id))){
+              window_locs$dmr_id[which(is.na(window_locs$dmr_id) )][which] <- 1
+            } else {
+              window_locs$dmr_id[which(is.na(window_locs$dmr_id) )][which] <- max(window_locs$dmr_id)+1
+            }
+          }
+          #### sequentially mask groups
+          window_all_signif <- TRUE
+          for(mask_id in unique(window_locs$dmr_id[!is.na(window_locs$dmr_id)]) ){
+            which_mask <- which(window_locs$dmr_id==mask_id)
+            window_loc_ranks <- window_locs$pval_rank[order(window_locs$pval_rank)][-which_mask]
+            window_signif <- 1
+            n <- total_locs
+            k <- length(current_signif_index:right_index)-length(which_mask)  ##  window_size minus length mask group
+            for(i in length(window_loc_ranks):1 ){
+              window_signif = window_signif * dhyper(x=i, m=window_loc_ranks[i], n=max(0,n-window_loc_ranks[i]), k=k)
+              n <- window_loc_ranks[i]-1
+              k <- i-1
+            }
+
+            benjimini_hochberg_windows <- c(benjimini_hochberg_windows, window_signif)
+          }
+        }
+        benjimini_hochberg_windows
+      }
+
+       temp <- unname(unlist(benjimini_hochberg_windows))
+       temp <- temp[order(temp)]
+       temp_df <- data.frame("benjamini-hochberg"=temp,"rank"=1:length(temp))
+       temp_df$crit <- region_signif_cutoff * temp_df$rank / length(which(locs$pval<1))
+       temp_df$bh_lt_crit <- temp_df$benjamini.hochberg < temp_df$crit
+       benj_hoch_signif_cutoff <- temp_df$benjamini.hochberg[max(which(temp_df$bh_lt_crit))]
+
+
+    }
+    ### END: Set up benjamini-hochberge ###
+
     dmr_layers_list[[layer_name]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
       ## first call features in layer using independently of all other layer
       which_signif <- which(chr_locs$pval < locs_pval_cutoff)
       which_signif_index <- 1
+
 
       ## paint all locs that are in a window that has significance < region_signif_cutoff
       while(TRUE){
@@ -93,6 +160,7 @@ dmrscaler <- function(locs,
             window_locs$dmr_id[which(is.na(window_locs$dmr_id) )][which] <- max(window_locs$dmr_id)+1
           }
         }
+
         #### sequentially mask groups
         window_all_signif <- TRUE
         for(mask_id in unique(window_locs$dmr_id[!is.na(window_locs$dmr_id)]) ){
@@ -106,15 +174,22 @@ dmrscaler <- function(locs,
             n <- window_loc_ranks[i]-1
             k <- i-1
           }
-          if(window_signif > region_signif_cutoff){
-            window_all_signif <- FALSE
-            break ## if window_signif > region_signif_cutoff for any masked group, region is not altered in current layer
+          if(region_signif_method=="benjamini-hochberg"){
+            if(window_signif > benj_hoch_signif_cutoff){
+              window_all_signif <- FALSE
+              break ## if window_signif > region_signif_cutoff for any masked group, region is not altered in current layer
+            }
+          } else {
+            if(window_signif > region_signif_cutoff){
+              window_all_signif <- FALSE
+              break ## if window_signif > region_signif_cutoff for any masked group, region is not altered in current layer
+            }
           }
         }
         if(window_all_signif){
           chr_locs$in_dmr[current_signif_index:right_signif_index] <- TRUE
         }
-      }
+      } # end paint all in dmrs
 
       ### build dmrs
       #### add dmrs ranges
