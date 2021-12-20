@@ -50,7 +50,7 @@ dmrscaler <- function(locs,
   total_locs <- nrow(locs)
 
   if(region_signif_method == "bonferroni"){
-    region_signif_cutoff <- region_signif_cutoff/length(which(locs$pval<1))
+    region_signif_cutoff <- region_signif_cutoff/nrow(locs)
   }
 
   # organize locs into list of dataframes where each dataframe is from a unique chr
