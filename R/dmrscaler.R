@@ -4,7 +4,7 @@
 #' @param locs dataframe of measured CpG loci with columns as "chr", "pos", "pval"
 #' @param loc_signif_method one of "p-value" or "fdr" (false discovery rate)
 #' @param loc_signif_cutoff p-value at which individual CpGs are considered significant or desired fdr is achieved for individual CpGs
-#' @param region_signif_method one of "p-value" or "benjamini-hochberg" (false discovery rate control) or "bonferroni" (family-wise error rate)
+#' @param region_signif_method one of "p-value" or "benjamini-yekutieli" (false discovery rate control) or "bonferroni" (family-wise error rate)
 #' @param region_signif_cutoff p-value or fwer at which regions are considered significant or desired fdr is achieved for regions
 #' @param window_type specifies  one of "k_nearest" or "genomic_width"
 #' @param window_sizes vector of window size for each layer where window_type determines whether this represents the genomic_width of windows or the k_nearest neighbors that compose a window
@@ -22,7 +22,7 @@
 
 dmrscaler <- function(locs,
                       locs_pval_cutoff = 0.05,
-                      region_signif_method = c("bonferroni","benjamini-hochberg","p-value"),
+                      region_signif_method = c("bonferroni","benjamini-yekutieli","p-value"),
                       region_signif_cutoff = 0.01,
                       window_type = c("k_nearest", "genomic_width"),
                       window_sizes = c(2,4,8,16,32,64),
@@ -34,7 +34,7 @@ dmrscaler <- function(locs,
   if( !all(is.element(c("chr","pos","pval"), colnames(locs))) ){
     stop("ERROR: locs must include column names: \"chr\",\"pos\",\"pval\". ")
   }
-  stopifnot( !is.na(pmatch(region_signif_method, c("bonferroni","benjamini-hochberg","p-value")) ))
+  stopifnot( !is.na(pmatch(region_signif_method, c("bonferroni","benjamini-yekutieli","p-value")) ))
   region_signif_method <- match.arg(region_signif_method)
   stopifnot( !is.na(pmatch(window_type, c("k_nearest","genomic_width")) ))
   window_type <- match.arg(window_type)
@@ -72,10 +72,10 @@ dmrscaler <- function(locs,
     layer_name <- paste(window_size,"_loc_window_layer", sep="")
 
 
-    ### BEGIN: Set up benjamini-hochberge ###
-    if(region_signif_method=="benjamini-hochberg"){
-      benjimini_hochberg_windows <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
-        benjimini_hochberg_windows <- c()
+    ### BEGIN: Set up benjamini-yekutielie ###
+    if(region_signif_method=="benjamini-yekutieli"){
+      benjimini_yekutieli_windows <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
+        benjimini_yekutieli_windows <- c()
         which_signif <- which(chr_locs$pval < locs_pval_cutoff)
         which_signif_index <- 1
         ## paint all locs that are in a window that has significance < region_signif_cutoff
@@ -116,24 +116,24 @@ dmrscaler <- function(locs,
               k <- i-1
             }
 
-            benjimini_hochberg_windows <- c(benjimini_hochberg_windows, window_signif)
+            benjimini_yekutieli_windows <- c(benjimini_yekutieli_windows, window_signif)
           }
         }
-        benjimini_hochberg_windows
+        benjimini_yekutieli_windows
       }
 
-      temp <- unname(unlist(benjimini_hochberg_windows))
+      temp <- unname(unlist(benjimini_yekutieli_windows))
       temp <- temp[order(temp)]
-      temp_df <- data.frame("benjamini-hochberg"=temp,"rank"=1:length(temp))
-      temp_df$crit <- region_signif_cutoff * temp_df$rank / length(which(locs$pval<1))
-      temp_df$bh_lt_crit <- temp_df$benjamini.hochberg < temp_df$crit
+      temp_df <- data.frame("benjamini-yekutieli"=temp,"rank"=1:length(temp))
+      temp_df$crit <- (region_signif_cutoff * temp_df$rank) / (length(which(locs$pval<1)) * sum(1/(1:length(which(locs$pval<1)))))
+      temp_df$bh_lt_crit <- temp_df$benjamini.yekutieli < temp_df$crit
       if(length(which(temp_df$bh_lt_crit))==0){
         benj_hoch_signif_cutoff <- 0
       } else {
-        benj_hoch_signif_cutoff <- temp_df$benjamini.hochberg[max(which(temp_df$bh_lt_crit))]
+        benj_hoch_signif_cutoff <- temp_df$benjamini.yekutieli[max(which(temp_df$bh_lt_crit))]
       }
     }
-    ### END: Set up benjamini-hochberge ###
+    ### END: Set up benjamini-yekutielie ###
 
     dmr_layers_list[[layer_name]] <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
       ## first call features in layer using independently of all other layer
@@ -181,7 +181,7 @@ dmrscaler <- function(locs,
             n <- window_loc_ranks[i]-1
             k <- i-1
           }
-          if(region_signif_method=="benjamini-hochberg"){
+          if(region_signif_method=="benjamini-yekutieli"){
             if(window_signif > benj_hoch_signif_cutoff){
               window_all_signif <- FALSE
               break ## if window_signif > region_signif_cutoff for any masked group, region is not altered in current layer
