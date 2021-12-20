@@ -4,7 +4,7 @@
 #' @param locs dataframe of measured CpG loci with columns as "chr", "pos", "pval"
 #' @param loc_signif_method one of "p-value" or "fdr" (false discovery rate)
 #' @param loc_signif_cutoff p-value at which individual CpGs are considered significant or desired fdr is achieved for individual CpGs
-#' @param region_signif_method one of "p-value" or "fdr" (false discovery rate) or "fwer" (family-wise error rate)
+#' @param region_signif_method one of "p-value" or "benjamini-hochberg" (false discovery rate control) or "bonferroni" (family-wise error rate)
 #' @param region_signif_cutoff p-value or fwer at which regions are considered significant or desired fdr is achieved for regions
 #' @param window_type specifies  one of "k_nearest" or "genomic_width"
 #' @param window_sizes vector of window size for each layer where window_type determines whether this represents the genomic_width of windows or the k_nearest neighbors that compose a window
@@ -16,6 +16,9 @@
 #'
 #' @return dmrscaler returns a list of dmrs at each layer
 #'
+#'
+#'
+#' @export
 
 dmrscaler <- function(locs,
                       locs_pval_cutoff = 0.05,
@@ -25,7 +28,7 @@ dmrscaler <- function(locs,
                       window_sizes = c(2,4,8,16,32,64),
                       dmr_constraint_list = NULL,
                       output_type = c("simple", "complete")
-){z
+){
 
   # check input parameters are valid
   if( !all(is.element(c("chr","pos","pval"), colnames(locs))) ){
@@ -250,6 +253,16 @@ dmrscaler <- function(locs,
     }
   } # end for window_size loop
 
+
+  for(i in 1:length(dmr_layers_list)){
+    temp <- data.frame(chr=character(), dmr_layers_list[[i]][[1]][0,])
+    for(j in 1:length(dmr_layers_list[[i]])){
+      if(nrow(dmr_layers_list[[i]][[j]])>0){
+        temp <- rbind(temp, data.frame(chr=names(dmr_layers_list[[i]])[j], dmr_layers_list[[i]][[j]]) )
+      }
+    }
+    dmr_layers_list[[i]] <- temp
+  }
 
   # return output
   if(output_type == "simple"){
