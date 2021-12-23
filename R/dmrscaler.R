@@ -74,7 +74,9 @@ dmrscaler <- function(locs,
 
     ### BEGIN: Set up benjamini-yekutielie ###
     if(region_signif_method=="benjamini-yekutieli"){
-      benjimini_yekutieli_windows <- foreach(chr_locs = locs_list, .final = function(x) setNames(x, names(locs_list))) %dopar% {
+      benjimini_yekutieli_windows <- foreach(chr_locs = locs_list,
+                                             .final = function(x) setNames(x, names(locs_list)),
+                                             .errorhandling = "pass" ) %dopar% {
         benjimini_yekutieli_windows <- c()
         which_signif <- which(chr_locs$pval < locs_pval_cutoff)
         which_signif_index <- 1
