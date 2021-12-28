@@ -130,9 +130,9 @@ dmrscaler <- function(locs,
       temp_df$crit <- (region_signif_cutoff * temp_df$rank) / (length(which(locs$pval<1)) * sum(1/(1:length(which(locs$pval<1)))))
       temp_df$bh_lt_crit <- temp_df$benjamini.yekutieli < temp_df$crit
       if(length(which(temp_df$bh_lt_crit))==0){
-        benj_hoch_signif_cutoff <- 0
+        benj_yeku_signif_cutoff <- 0
       } else {
-        benj_hoch_signif_cutoff <- temp_df$benjamini.yekutieli[max(which(temp_df$bh_lt_crit))]
+        benj_yeku_signif_cutoff <- temp_df$benjamini.yekutieli[max(which(temp_df$bh_lt_crit))]
       }
     }
     ### END: Set up benjamini-yekutielie ###
@@ -184,7 +184,7 @@ dmrscaler <- function(locs,
             k <- i-1
           }
           if(region_signif_method=="benjamini-yekutieli"){
-            if(window_signif > benj_hoch_signif_cutoff){
+            if(window_signif > benj_yeku_signif_cutoff){
               window_all_signif <- FALSE
               break ## if window_signif > region_signif_cutoff for any masked group, region is not altered in current layer
             }
