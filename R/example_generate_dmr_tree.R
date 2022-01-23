@@ -19,9 +19,10 @@ example_generate_dmr_tree <- function(dmrscaler_result, layer, chr, start, stop 
 
   x_full_node_set <- list()
   for(j in 1:length(dmrscaler_result)){
-    x_which <- which(dmrscaler_result[[j]]$chr==chr & dmrscaler_result[[j]]$start_pos>=start & dmrscaler_result[[j]]$stop_pos<=stop )
+    if(nrow(dmrscaler_result[[j]])==0){next;}
+    x_which <- which(dmrscaler_result[[j]]$chr==chr & dmrscaler_result[[j]]$start>=start & dmrscaler_result[[j]]$stop<=stop )
     x_base <- GenomicRanges::GRanges(seqnames = dmrscaler_result[[j]]$chr[x_which],
-                                     IRanges(start = dmrscaler_result[[j]]$start_pos[x_which], end = dmrscaler_result[[j]]$stop_pos[x_which]  ))
+                                     IRanges(start = dmrscaler_result[[j]]$start[x_which], end = dmrscaler_result[[j]]$stop[x_which]  ))
     x_base_nodes <- list()
     for(i in 1:length(x_base)){
       temp_name <- paste(as.character(seqnames(x_base[i,])), start(x_base[i,]), end(x_base[i,]), sep = "_")
@@ -30,7 +31,7 @@ example_generate_dmr_tree <- function(dmrscaler_result, layer, chr, start, stop 
     }
     x_full_node_set[[j]]<-x_base_nodes
   }
-
+  x_full_node_set[sapply(x_full_node_set, is.null)] <- NULL
 
   for(j in 2:length(x_full_node_set)){
     #print(j)
@@ -62,7 +63,7 @@ example_generate_dmr_tree <- function(dmrscaler_result, layer, chr, start, stop 
     x_full_node_set[[j]]<-upper
   }
 
-  x_dmr_tree <- list("name"="root","children"=x_full_node_set[[5]])
+  x_dmr_tree <- list("name"="root","children"=x_full_node_set[[length(x_full_node_set)]])
 
   x_dmr_tree_clean <- list()
 

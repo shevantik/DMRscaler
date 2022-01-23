@@ -46,11 +46,15 @@ phen <- gse$GSE149960_series_matrix.txt.gz@phenoData@data
 rm(gse)
 
 ## get methylation data as idat files (NOTE: this saves files locally in working directory, unpacked size is 411 Mb)
-## unpacked size is 411 Mb  
-getGEOSuppFiles("GSE149960")
-untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
-file.remove("GSE149960/GSE149960_RAW.tar")
-
+## unpacked size is 411 Mb
+if(!dir.exists("GSE149960/idat")){
+  ## note: some people have issues using GEOquery to download
+  ##       if this is the case, manually downloading into the data
+  ##       into the working directory may be necessary
+  getGEOSuppFiles("GSE149960")
+  untar("GSE149960/GSE149960_RAW.tar", exdir = "GSE149960/idat")
+  file.remove("GSE149960/GSE149960_RAW.tar")
+}
 idat_files <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
 sapply(idat_files, gunzip, overwrite = TRUE); rm(idat_files)
 ```
@@ -90,7 +94,7 @@ B <- getBeta(GRset.funnorm)
 
 ## Run statistical tests and permutations to feed into DMRscaler method
 We use the non-parametric wilcox test for individual CG significance calculations and permutation of these significance values for estimating window level significance. 
-ToDo: The permutations involved are time consuming (~3-5 min per permutation, should run with at least 10), so the permutations should be run and the results included with the package as example data.   
+
 ```{r DMRscaler-set-up-dependencies, message=FALSE}
 library("doParallel")
 library("rlang")
@@ -101,32 +105,10 @@ library("foreach")
 ```{r DMRscaler-set-up}
 registerDoParallel(detectCores())
 
-num_perm <- 10
-clt_reps <- 1e4
-
-rim <- DMRscaler::generate_rand_index_matrix(num_controls = length(controls),
-                                             num_cases = length(cases),
-                                             num_permutations = num_perm)
-mrp <- DMRscaler::run_MWW_rand_permutation(index_matrix = rim, 
-                                           Beta = B,
-                                           num_permutations = num_perm)
-mrp <- -log10(mrp)
 mwr <- DMRscaler::run_MWW(control_indices = controls ,
                           case_indices = cases ,
                           Beta = B)
-mwr <- -log10(mwr)
-fdt <- DMRscaler::write_FDR_table(real_table = mwr,
-                                  rand_table = mrp)
 
-fdrscaler <- DMRscaler::get_FDR_scalar(MWW_FDR_table = fdt,
-                                       MWW_FDR_threshold = 0.1)
-if(is.na(fdrscaler)){fdrscaler <- 1}
-
-## This is where significance level of individual windows is estimated by permutation 
-cltable <- DMRscaler::write_CLT_lookup_table(num_reps = clt_reps ,
-                                             data_to_sample = mwr$p_val,
-                                             FDR_scaler = fdrscaler,
-                                             clt_numCGs = c(2, 5, 10, 25, 50))
 locs$chr <- as.factor(locs$chr)
 locs$scoring_values <- mwr$p_val
 locs$pval <- mwr$p_val
@@ -137,12 +119,19 @@ locs$pval <- mwr$p_val
 Uses significance values associated with each CG location and the values from the statistical test and permutations along with windows of adjacent measured CGs defined by the layer_sizes
 ToDo: This can take   
 ```{r}
-dmrscaler_result <- DMRscaler::dmrscaler(locs = locs, fdrscaler = fdrscaler, cltable=cltable, layer_sizes = c(4,8,16,32,64))
+dmrscaler_result <- DMRscaler::dmrscaler(locs=locs,
+                                         locs_pval_cutoff = 0.01,
+                                         region_signif_method = "ben",
+                                         region_signif_cutoff = 0.05,
+                                         window_type = "k_nearest",
+                                         window_sizes = c(2,4,8,16,32,64,128,256),
+                                         output_type = "complete")
+
 ```
 
 ## Choose an example region to look at
 ```{r}
-example_region <- data.frame(chr="chr7",start=155000000, stop=159000000, stringsAsFactors = FALSE)
+example_region <- data.frame(chr="chr7",start=155616381, stop=159033499, stringsAsFactors = FALSE)
 ```
 
 ```{r hilbert-curve-dependencies, message=FALSE}
@@ -151,14 +140,14 @@ library(HilbertCurve)
 ```
 
 ```{r, fig.width = 4, fig.height=4}
-col_fun = colorRamp2(c(0,fdrscaler*0.99,fdrscaler,max(locs$scoring_values)), c("grey30", "grey60", "red", "red"))
+col_fun = colorRamp2(c(0,-log10(0.05),-log10(0.01),max(-log10(locs$pval))), c("grey30", "grey60", "red", "red"))
 level = 6
 ## 4^level - 1 = # segments
 
 hc_points <- locs[which(locs$chr== example_region$chr ),]
 hc_max <- nrow(hc_points)
-hc_col <- col_fun(hc_points$scoring_values)
-hc_size <- hc_points$scoring_values / max(hc_points$scoring_values)
+hc_col <- col_fun(-log10(hc_points$pval))
+hc_size <- -log10(hc_points$pval) / max(-log10(hc_points$pval))
 
 #  hc_size <- hc_points$scoring_values / fdrscaler
 hc <- HilbertCurve(s=1,e=hc_max, level = level, reference = F, title = example_region$chr)
@@ -169,10 +158,9 @@ hc_polygon(hc, x1 = min(which(hc_points$pos >= example_region$start)), x2 = max(
 level = 4
 hc_points <- locs[which(locs$chr== example_region$chr & locs$pos >= example_region$start & locs$pos <= example_region$stop ),]
 hc_max <- nrow(hc_points)
-hc_col <- col_fun(hc_points$scoring_values)
-hc_size <- hc_points$scoring_values / max(hc_points$scoring_values)
+hc_col <- col_fun(-log10(hc_points$pval))
+hc_size <- -log10(hc_points$pval) / max(-log10(hc_points$pval))
 
-#  hc_size <- hc_points$scoring_values / fdrscaler
 hc <- HilbertCurve(s=1,e=hc_max, level = level, reference = F, title = example_region$chr)
 hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*4, "mm"),gp = gpar(col = hc_col, fill = hc_col))
 ```
@@ -185,7 +173,7 @@ library(networkD3)
 ```
 
 ```{r dmr-structure-visual, fig.height=6, fig.width = 7}
-dmr_tree <- example_generate_dmr_tree(dmrscaler_result = dmrscaler_result, layer=5, chr=example_region$chr, start = example_region$start, stop = example_region$stop)
+dmr_tree <- example_generate_dmr_tree(dmrscaler_result = dmrscaler_result, layer=length(dmrscaler_result), chr=example_region$chr, start = example_region$start, stop = example_region$stop)
 diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke = "black", linkColour = "black", opacity = 1 )
 
 ```
@@ -211,7 +199,7 @@ itrack<-IdeogramTrack(genome="hg19", chromosome = example_region$chr)
 ## set up genome axis track
 gtrack<-GenomeAxisTrack()
 ## set up significance track
-sig_track <- DataTrack(range=gr, data = locs$scoring_values[which], type=c("p"))
+sig_track <- DataTrack(range=gr, data = -log10(locs$pval[which]), type=c("p"))
 ## set up beta value track
 beta_track <- DataTrack(range = gr, data = t(Bsub), groups=group,name="Beta", type=c("a","g","confint"))
 ## set up diff beta track
@@ -226,16 +214,19 @@ if(!all(is.na(genesub))){
 ## set up DMRscaler results layer tracks
 layer_track <- list()
 for(j in 1:length(dmrscaler_result)){
-  layer_track[[j]] <- AnnotationTrack(start = dmrscaler_result[[j]]$start_pos, 
-                                      end =  dmrscaler_result[[j]]$stop_pos,
-                                      chromosome = dmrscaler_result[[j]]$chr,
-                                      strand = "*", genome = "hg19", name=paste("layer", j, sep = "_"))
-  displayPars(layer_track[[j]]) <- list(cex.legend=0.7, cex.axis=0.7, cex.title=0.7, rotation.title=0, stackHeight = 1, shape="box")
+  if(nrow(dmrscaler_result[[j]])==0){
+    layer_track[[j]] <- AnnotationTrack()
+  } else {
+    layer_track[[j]] <- AnnotationTrack(start = dmrscaler_result[[j]]$start, 
+                                        end =  dmrscaler_result[[j]]$stop,
+                                        chromosome = dmrscaler_result[[j]]$chr,
+                                        strand = "*", genome = "hg19", name=paste("layer", j, sep = "_"))
+    displayPars(layer_track[[j]]) <- list(cex.legend=0.7, cex.axis=0.7, cex.title=0.7, rotation.title=0, stackHeight = 1, shape="box")
+  }
 }
 
 
-plotTracks(c(list(itrack, gtrack, sig_track, beta_track, diff_beta_track, grtrack), layer_track
-                ), from = example_region$start-1, to=example_region$stop+1 ) 
+plotTracks(c(list(itrack, gtrack, sig_track, beta_track, diff_beta_track, grtrack), layer_track), from = example_region$start-1, to=example_region$stop+1 ) 
 ```
 
 
