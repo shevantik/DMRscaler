@@ -1,5 +1,5 @@
 ---
-title: "The DMRscaler user's guide simplified versions"
+title: "The DMRscaler user's guide simplified version"
 author: "Leroy Bondhus"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -133,7 +133,8 @@ for(i in unique(simul_locs$chr)){
 }
 ```
 
-```{r}
+```{r look at distribution of cpg significance per chromosome}
+
 for(i in unique(simul_locs$chr)){
   which <- which(simul_locs$chr==i)
   plot(simul_locs$pos[which],-log10(simul_locs$pval)[which] )
@@ -149,6 +150,7 @@ dmrscaler_output <- DMRscaler::dmrscaler(simul_locs,
                                          region_signif_method = "bon",
                                          window_type = "k_nearest",
                                          output_type = "complete")
+dmrscaler_output[[5]]
 
 ```
 
