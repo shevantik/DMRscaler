@@ -24,14 +24,21 @@ knitr::opts_chunk$set(
 DMRscaler is a method designed to identify features of differential methylation between case and control conditions across a wide range of genomic scale. In the first part of the vignette we step through downloading a publicly available dataset, running the statistical test for difference at individual CG site and a permutation test for estimating enrichment of differentially methylated CGs within a window. After this we run DMRscaler to call DMRs at each layer of window sizes generating a list of results. We then look at the data to visualize how DMRscaler has called and represents these DMR features.       
 
 
+
 ## install DMRscaler 
-To install pull the most recent version from github and place in working directory 
+Download the most recent version of DMRscaler from github and place in working directory, if DMRscaler is downloaded to another directory, change the "path_to_DMRscaler" variable below to the path to the DMRscaler directory.
 ```{r, results='hide', warning=FALSE, , message=FALSE}
-library("devtools")
-library("roxygen2")
-document()
-install("../DMRscaler")
+path_to_DMRscaler <- "../DMRscaler"
+
+if(!require("devtools", quietly = TRUE )){
+  install.packages("devtools")
+  library("devtools")
+}
+if(!require("DMRscaler")){
+  devtools::install(path_to_DMRscaler)
+}
 ```
+
 
 ## Example Dataset Setup
 We will use data from GSE149960 from (REFERENCE) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
@@ -102,7 +109,7 @@ library("dplyr")
 library("foreach")
 ```
 
-```{r DMRscaler-set-up}
+```{r precompute p-values}
 registerDoParallel(detectCores())
 
 mwr <- DMRscaler::run_MWW(control_indices = controls ,
