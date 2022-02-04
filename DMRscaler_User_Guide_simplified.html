@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Leroy Bondhus" />
+
+<meta name="date" content="2022-02-03" />
+
+<title>The DMRscaler user’s guide simplified versions</title>
+
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">The DMRscaler user’s guide simplified versions</h1>
+<h4 class="author">Leroy Bondhus</h4>
+<h4 class="date">2022-02-03</h4>
+
+
+
+<div id="install-dmrscaler" class="section level2">
+<h2>install DMRscaler</h2>
+<p>Download the most recent version of DMRscaler from github and place in working directory, if DMRscaler is downloaded to another directory, change the “path_to_DMRscaler” variable below to the path to the DMRscaler directory.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a>path_to_DMRscaler &lt;-<span class="st"> &quot;../DMRscaler&quot;</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a></span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="cf">if</span>(<span class="op">!</span><span class="kw">require</span>(<span class="st">&quot;devtools&quot;</span>, <span class="dt">quietly =</span> <span class="ot">TRUE</span> )){</span>
+<span id="cb1-4"><a href="#cb1-4"></a>  <span class="kw">install.packages</span>(<span class="st">&quot;devtools&quot;</span>)</span>
+<span id="cb1-5"><a href="#cb1-5"></a>  <span class="kw">library</span>(<span class="st">&quot;devtools&quot;</span>)</span>
+<span id="cb1-6"><a href="#cb1-6"></a>}</span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="cf">if</span>(<span class="op">!</span><span class="kw">require</span>(<span class="st">&quot;DMRscaler&quot;</span>)){</span>
+<span id="cb1-8"><a href="#cb1-8"></a>  devtools<span class="op">::</span><span class="kw">install</span>(path_to_DMRscaler)</span>
+<span id="cb1-9"><a href="#cb1-9"></a>}</span></code></pre></div>
+<p>Here we add some artificial chromosomes with cpgs</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>simul_chrs &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">chr=</span><span class="kw">c</span>(<span class="st">&quot;chr1&quot;</span>,<span class="st">&quot;chr2&quot;</span>),</span>
+<span id="cb2-2"><a href="#cb2-2"></a>                         <span class="dt">seqlengths=</span><span class="kw">c</span>(<span class="fl">100e6</span>,<span class="fl">50e6</span>))</span>
+<span id="cb2-3"><a href="#cb2-3"></a>cpg_frequency &lt;-<span class="st"> </span><span class="fl">1e-4</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="kw">set.seed</span>(<span class="dv">1</span>)</span>
+<span id="cb2-5"><a href="#cb2-5"></a>simul_locs &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">chr=</span><span class="kw">character</span>(), <span class="dt">pos=</span><span class="kw">numeric</span>())</span>
+<span id="cb2-6"><a href="#cb2-6"></a></span>
+<span id="cb2-7"><a href="#cb2-7"></a><span class="co">## simulate some initial CpG positions</span></span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(simul_chrs)){</span>
+<span id="cb2-9"><a href="#cb2-9"></a>  simul_locs &lt;-<span class="st"> </span><span class="kw">rbind</span>(simul_locs,</span>
+<span id="cb2-10"><a href="#cb2-10"></a>                      <span class="kw">data.frame</span>(<span class="dt">chr=</span>simul_chrs<span class="op">$</span>chr[i],</span>
+<span id="cb2-11"><a href="#cb2-11"></a>                                 <span class="dt">pos=</span><span class="kw">sort</span>(<span class="kw">sample</span>(<span class="dv">1</span><span class="op">:</span>simul_chrs<span class="op">$</span>seqlengths[i],</span>
+<span id="cb2-12"><a href="#cb2-12"></a>                                                 (simul_chrs<span class="op">$</span>seqlengths[i])<span class="op">*</span>cpg_frequency) )))</span>
+<span id="cb2-13"><a href="#cb2-13"></a>}</span></code></pre></div>
+<p>Next we add some additional cpg features to the artificial chromosomes to give a non-uniform distibution of cpgs across the genome</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="co">## add 100 random high CpG density areas to simulate CpG Islands with width between 1e2 and 1e4</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a>num_features &lt;-<span class="st"> </span><span class="dv">100</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a>min_width &lt;-<span class="st"> </span><span class="fl">1e2</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a>max_width &lt;-<span class="st"> </span><span class="fl">1e4</span></span>
+<span id="cb3-5"><a href="#cb3-5"></a></span>
+<span id="cb3-6"><a href="#cb3-6"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="kw">sample</span>(<span class="kw">nrow</span>(simul_locs), num_features)){</span>
+<span id="cb3-7"><a href="#cb3-7"></a>  temp_island_locs &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">chr=</span>simul_locs[i,]<span class="op">$</span>chr, <span class="dt">pos=</span>simul_locs[i,]<span class="op">$</span>pos)</span>
+<span id="cb3-8"><a href="#cb3-8"></a>  temp_island_chr_seqlength &lt;-<span class="st"> </span>simul_chrs<span class="op">$</span>seqlengths[<span class="kw">which</span>(simul_chrs<span class="op">$</span>chr<span class="op">==</span>temp_island_locs<span class="op">$</span>chr)]</span>
+<span id="cb3-9"><a href="#cb3-9"></a>  temp_island_locs &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">chr=</span>simul_locs[i,]<span class="op">$</span>chr,</span>
+<span id="cb3-10"><a href="#cb3-10"></a>                         <span class="dt">pos=</span><span class="kw">max</span>(<span class="kw">c</span>(<span class="dv">1</span>,temp_island_locs<span class="op">$</span>pos <span class="op">-</span></span>
+<span id="cb3-11"><a href="#cb3-11"></a><span class="st">                                     </span><span class="kw">floor</span>(<span class="dv">10</span><span class="op">^</span>(<span class="kw">runif</span>(<span class="dv">1</span>,<span class="kw">log10</span>(min_width<span class="op">/</span><span class="dv">2</span>),<span class="kw">log10</span>(max_width<span class="op">/</span><span class="dv">2</span>))))  ))<span class="op">:</span></span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="st">                             </span><span class="kw">min</span>(<span class="kw">c</span>(temp_island_chr_seqlength,temp_island_locs<span class="op">$</span>pos <span class="op">+</span><span class="st"> </span></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="st">                                     </span><span class="kw">floor</span>(<span class="dv">10</span><span class="op">^</span>(<span class="kw">runif</span>(<span class="dv">1</span>, <span class="kw">log10</span>(min_width<span class="op">/</span><span class="dv">2</span>), <span class="kw">log10</span>(max_width)))) )))</span>
+<span id="cb3-14"><a href="#cb3-14"></a>  </span>
+<span id="cb3-15"><a href="#cb3-15"></a>  min_density &lt;-<span class="st"> </span><span class="fl">1e-2</span></span>
+<span id="cb3-16"><a href="#cb3-16"></a>  max_density &lt;-<span class="st"> </span><span class="fl">1e-1</span></span>
+<span id="cb3-17"><a href="#cb3-17"></a>  temp_island_locs &lt;-<span class="st"> </span>temp_island_locs[<span class="kw">sample</span>(<span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(temp_island_locs), </span>
+<span id="cb3-18"><a href="#cb3-18"></a>                                              <span class="dv">10</span><span class="op">^</span>(<span class="kw">runif</span>(<span class="dv">1</span>,<span class="kw">log10</span>(<span class="kw">nrow</span>(temp_island_locs)<span class="op">*</span>min_density),</span>
+<span id="cb3-19"><a href="#cb3-19"></a>                                                       <span class="kw">log10</span>(<span class="kw">nrow</span>(temp_island_locs)<span class="op">*</span>max_density) ))),  ]</span>
+<span id="cb3-20"><a href="#cb3-20"></a>  </span>
+<span id="cb3-21"><a href="#cb3-21"></a>  simul_locs &lt;-<span class="st"> </span><span class="kw">rbind</span>(simul_locs, temp_island_locs)</span>
+<span id="cb3-22"><a href="#cb3-22"></a>}</span>
+<span id="cb3-23"><a href="#cb3-23"></a></span>
+<span id="cb3-24"><a href="#cb3-24"></a>simul_locs &lt;-<span class="st"> </span><span class="kw">unique</span>(simul_locs)</span>
+<span id="cb3-25"><a href="#cb3-25"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="kw">unique</span>(simul_locs<span class="op">$</span>chr)){</span>
+<span id="cb3-26"><a href="#cb3-26"></a>  which &lt;-<span class="st"> </span><span class="kw">which</span>(simul_locs<span class="op">$</span>chr<span class="op">==</span>i)</span>
+<span id="cb3-27"><a href="#cb3-27"></a>  simul_locs[which,]<span class="op">$</span>pos &lt;-<span class="st"> </span><span class="kw">sort</span>(simul_locs[which,]<span class="op">$</span>pos)</span>
+<span id="cb3-28"><a href="#cb3-28"></a>}</span>
+<span id="cb3-29"><a href="#cb3-29"></a></span>
+<span id="cb3-30"><a href="#cb3-30"></a><span class="co">## simulate random noise  </span></span>
+<span id="cb3-31"><a href="#cb3-31"></a>simul_locs<span class="op">$</span>pval &lt;-<span class="st"> </span><span class="dv">1</span></span>
+<span id="cb3-32"><a href="#cb3-32"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(simul_locs)){</span>
+<span id="cb3-33"><a href="#cb3-33"></a>  simul_locs<span class="op">$</span>pval[i] &lt;-<span class="st"> </span><span class="kw">t.test</span>(<span class="kw">rnorm</span>(<span class="dv">10</span>),<span class="kw">rnorm</span>(<span class="dv">10</span>))<span class="op">$</span>p.value</span>
+<span id="cb3-34"><a href="#cb3-34"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a></span>
+<span id="cb4-2"><a href="#cb4-2"></a></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="co">## add simulated DMRs</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a>simul_dmrs &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">chr=</span><span class="kw">c</span>(<span class="kw">rep</span>(<span class="st">&quot;chr1&quot;</span>, <span class="dv">5</span>),<span class="kw">rep</span>(<span class="st">&quot;chr2&quot;</span>, <span class="dv">5</span>)),</span>
+<span id="cb4-5"><a href="#cb4-5"></a>                         <span class="dt">start=</span><span class="kw">c</span>(<span class="kw">c</span>(<span class="fl">10e6</span>,<span class="fl">40e6</span>,<span class="fl">50e6</span>,<span class="fl">55e6</span>,<span class="fl">80e6</span>),<span class="kw">c</span>(<span class="fl">10e6</span>,<span class="fl">20e6</span>,<span class="fl">25e6</span>,<span class="fl">30e6</span>,<span class="fl">35e6</span>)),</span>
+<span id="cb4-6"><a href="#cb4-6"></a>                         <span class="dt">width=</span><span class="kw">c</span>(<span class="kw">c</span>(<span class="fl">1e3</span>,<span class="fl">1e3</span>,<span class="fl">1e6</span>,<span class="fl">1e4</span>,<span class="fl">1e5</span>),<span class="kw">c</span>(<span class="fl">1e3</span>,<span class="fl">1e3</span>,<span class="fl">1e4</span>,<span class="fl">1e4</span>,<span class="fl">1e6</span>) ),</span>
+<span id="cb4-7"><a href="#cb4-7"></a>                         <span class="dt">noise=</span><span class="kw">c</span>(<span class="kw">rep</span>(<span class="fl">0.5</span>,<span class="dv">5</span>), <span class="kw">rep</span>(<span class="fl">0.25</span>,<span class="dv">5</span>)))</span>
+<span id="cb4-8"><a href="#cb4-8"></a></span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(simul_dmrs)){</span>
+<span id="cb4-10"><a href="#cb4-10"></a>  </span>
+<span id="cb4-11"><a href="#cb4-11"></a>  min_density &lt;-<span class="st"> </span><span class="fl">1e1</span><span class="op">/</span>simul_dmrs<span class="op">$</span>width[i]</span>
+<span id="cb4-12"><a href="#cb4-12"></a>  max_density &lt;-<span class="st"> </span><span class="fl">5e1</span><span class="op">/</span>simul_dmrs<span class="op">$</span>width[i]</span>
+<span id="cb4-13"><a href="#cb4-13"></a>  temp_island_locs &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">chr=</span>simul_dmrs<span class="op">$</span>chr[i], <span class="dt">pos=</span>(simul_dmrs<span class="op">$</span>start[i])<span class="op">:</span>(simul_dmrs<span class="op">$</span>start[i] <span class="op">+</span><span class="st"> </span>simul_dmrs<span class="op">$</span>width[i]))</span>
+<span id="cb4-14"><a href="#cb4-14"></a>  temp_island_locs &lt;-<span class="st"> </span>temp_island_locs[<span class="kw">sample</span>(<span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(temp_island_locs),</span>
+<span id="cb4-15"><a href="#cb4-15"></a>                                             <span class="dv">10</span><span class="op">^</span>(<span class="kw">runif</span>(<span class="dv">1</span>,<span class="kw">log10</span>(<span class="kw">nrow</span>(temp_island_locs)<span class="op">*</span>min_density),</span>
+<span id="cb4-16"><a href="#cb4-16"></a>                                                       <span class="kw">log10</span>(<span class="kw">nrow</span>(temp_island_locs)<span class="op">*</span>max_density)))),]</span>
+<span id="cb4-17"><a href="#cb4-17"></a>  <span class="cf">for</span>(j <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(temp_island_locs)){</span>
+<span id="cb4-18"><a href="#cb4-18"></a>    temp_island_locs<span class="op">$</span>pval[j] &lt;-<span class="st"> </span><span class="kw">t.test</span>(<span class="kw">rnorm</span>(<span class="dv">10</span>, <span class="dt">mean =</span> <span class="dv">0</span>), <span class="kw">rnorm</span>(<span class="dv">10</span>, <span class="dt">mean =</span> <span class="dv">0</span>))<span class="op">$</span>p.value</span>
+<span id="cb4-19"><a href="#cb4-19"></a>  }</span>
+<span id="cb4-20"><a href="#cb4-20"></a>  </span>
+<span id="cb4-21"><a href="#cb4-21"></a>  which &lt;-<span class="st"> </span><span class="kw">sample</span>(<span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(temp_island_locs), <span class="kw">floor</span>(<span class="kw">nrow</span>(temp_island_locs)<span class="op">*</span>(<span class="dv">1</span><span class="op">-</span>simul_dmrs<span class="op">$</span>noise[i])))</span>
+<span id="cb4-22"><a href="#cb4-22"></a>  which &lt;-<span class="st"> </span><span class="kw">sort</span>(which)</span>
+<span id="cb4-23"><a href="#cb4-23"></a>  <span class="cf">for</span>(j <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="kw">length</span>(which)){</span>
+<span id="cb4-24"><a href="#cb4-24"></a>    temp_island_locs<span class="op">$</span>pval[which[j]] &lt;-<span class="st"> </span><span class="kw">t.test</span>(<span class="kw">rnorm</span>(<span class="dv">10</span>, <span class="dt">mean =</span> <span class="dv">0</span>), <span class="kw">rnorm</span>(<span class="dv">10</span>, <span class="dt">mean =</span> <span class="dv">2</span>))<span class="op">$</span>p.value</span>
+<span id="cb4-25"><a href="#cb4-25"></a>  }</span>
+<span id="cb4-26"><a href="#cb4-26"></a>  simul_locs &lt;-<span class="st"> </span><span class="kw">rbind</span>(simul_locs, temp_island_locs)</span>
+<span id="cb4-27"><a href="#cb4-27"></a>}</span>
+<span id="cb4-28"><a href="#cb4-28"></a></span>
+<span id="cb4-29"><a href="#cb4-29"></a></span>
+<span id="cb4-30"><a href="#cb4-30"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="kw">unique</span>(simul_locs<span class="op">$</span>chr)){</span>
+<span id="cb4-31"><a href="#cb4-31"></a>  which &lt;-<span class="st"> </span><span class="kw">which</span>(simul_locs<span class="op">$</span>chr <span class="op">==</span><span class="st"> </span>i)</span>
+<span id="cb4-32"><a href="#cb4-32"></a>  simul_locs[which,] &lt;-<span class="st"> </span>simul_locs[which,][<span class="kw">order</span>(simul_locs[which,]<span class="op">$</span>pos),]</span>
+<span id="cb4-33"><a href="#cb4-33"></a>  temp &lt;-<span class="st"> </span>simul_locs[<span class="op">-</span>which,]</span>
+<span id="cb4-34"><a href="#cb4-34"></a>  simul_locs&lt;-<span class="st"> </span>simul_locs[which,][<span class="kw">which</span>(<span class="op">!</span><span class="kw">duplicated</span>(simul_locs[which,]<span class="op">$</span>pos)), ]</span>
+<span id="cb4-35"><a href="#cb4-35"></a>  simul_locs &lt;-<span class="st"> </span><span class="kw">rbind</span>(simul_locs,temp)</span>
+<span id="cb4-36"><a href="#cb4-36"></a>  </span>
+<span id="cb4-37"><a href="#cb4-37"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a></span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="kw">unique</span>(simul_locs<span class="op">$</span>chr)){</span>
+<span id="cb5-3"><a href="#cb5-3"></a>  which &lt;-<span class="st"> </span><span class="kw">which</span>(simul_locs<span class="op">$</span>chr<span class="op">==</span>i)</span>
+<span id="cb5-4"><a href="#cb5-4"></a>  <span class="kw">plot</span>(simul_locs<span class="op">$</span>pos[which],<span class="op">-</span><span class="kw">log10</span>(simul_locs<span class="op">$</span>pval)[which] )</span>
+<span id="cb5-5"><a href="#cb5-5"></a>}</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --><img src="data:image/png;base64,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" /><!-- --></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>dmrscaler_output &lt;-<span class="st"> </span>DMRscaler<span class="op">::</span><span class="kw">dmrscaler</span>(simul_locs,</span>
+<span id="cb6-2"><a href="#cb6-2"></a>                                         <span class="dt">locs_pval_cutoff =</span> <span class="fl">0.05</span>,</span>
+<span id="cb6-3"><a href="#cb6-3"></a>                                         <span class="dt">region_signif_cutoff =</span> <span class="fl">0.05</span>,</span>
+<span id="cb6-4"><a href="#cb6-4"></a>                                         <span class="dt">window_sizes =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">4</span>,<span class="dv">8</span>,<span class="dv">16</span>,<span class="dv">32</span>,<span class="dv">64</span>),</span>
+<span id="cb6-5"><a href="#cb6-5"></a>                                         <span class="dt">region_signif_method =</span> <span class="st">&quot;bon&quot;</span>,</span>
+<span id="cb6-6"><a href="#cb6-6"></a>                                         <span class="dt">window_type =</span> <span class="st">&quot;k_nearest&quot;</span>,</span>
+<span id="cb6-7"><a href="#cb6-7"></a>                                         <span class="dt">output_type =</span> <span class="st">&quot;complete&quot;</span>)</span>
+<span id="cb6-8"><a href="#cb6-8"></a>dmrscaler_output[[<span class="dv">5</span>]]</span>
+<span id="cb6-9"><a href="#cb6-9"></a><span class="co">#&gt;     chr    start     stop  pval_region dmr_id</span></span>
+<span id="cb6-10"><a href="#cb6-10"></a><span class="co">#&gt; 1  chr2 10000020 10000988 5.388711e-79      1</span></span>
+<span id="cb6-11"><a href="#cb6-11"></a><span class="co">#&gt; 2  chr2 20000111 20027380 3.598299e-24      2</span></span>
+<span id="cb6-12"><a href="#cb6-12"></a><span class="co">#&gt; 3  chr2 25000302 25009672 6.859163e-56      3</span></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="co">#&gt; 4  chr2 30000850 30006817 1.919845e-29      4</span></span>
+<span id="cb6-14"><a href="#cb6-14"></a><span class="co">#&gt; 5  chr2 35714033 35920931 2.438183e-13      5</span></span>
+<span id="cb6-15"><a href="#cb6-15"></a><span class="co">#&gt; 6  chr1 10000224 10000915 5.864960e-39      1</span></span>
+<span id="cb6-16"><a href="#cb6-16"></a><span class="co">#&gt; 7  chr1 40000173 40000925 1.021878e-11      2</span></span>
+<span id="cb6-17"><a href="#cb6-17"></a><span class="co">#&gt; 8  chr1 49872230 50176514 2.374581e-10      3</span></span>
+<span id="cb6-18"><a href="#cb6-18"></a><span class="co">#&gt; 9  chr1 55000254 55008311 1.674731e-29      4</span></span>
+<span id="cb6-19"><a href="#cb6-19"></a><span class="co">#&gt; 10 chr1 80038442 80094902 2.139513e-36      5</span></span></code></pre></div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
