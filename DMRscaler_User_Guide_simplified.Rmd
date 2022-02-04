@@ -1,6 +1,6 @@
 ---
 title: "The DMRscaler user's guide simplified version"
-author: "Leroy Bondhus"
+author: "Leroy Bondhus, Angela Wei, Valerie Arboleda"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
