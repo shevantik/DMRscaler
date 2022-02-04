@@ -1,0 +1,122 @@
+---
+title: "The DMRscaler user's guide simplified versions"
+author: "Leroy Bondhus"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{The DMRscaler user's guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(
+                      warning=FALSE)
+```
+
+
+## install DMRscaler 
+To install pull the most recent version from github and place in working directory 
+```{r, results='hide', warning=FALSE, , message=FALSE}
+if(!require("devtools", quietly = TRUE )){
+  install.packages("devtools")
+  library("devtools")
+}
+devtools::install("../DMRscaler")
+```
+
+
+```{r}
+simul_chrs <- data.frame(chr=c("chr1","chr2"),
+                         seqlengths=c(100e6,50e6))
+set.seed(1)
+simul_locs <- data.frame(chr=character(), pos=numeric())
+
+## simulate some initial CpG positions
+for(i in 1:nrow(simul_chrs)){
+  simul_locs <- rbind(simul_locs,
+                      data.frame(chr=simul_chrs$chr[i],
+                                 pos=sort(sample(1:simul_chrs$seqlengths[i], (simul_chrs$seqlengths[i])/1e4 ) )))
+}
+
+
+
+
+
+## add 100 random high CpG density areas to simulate CpG Islands with width between 1e2 and 1e4
+for(i in sample(nrow(simul_locs), 100)){
+  temp_island_locs <- data.frame(chr=simul_locs[i,]$chr, pos=simul_locs[i,]$pos)
+  temp_island_chr_seqlength <- simul_chrs$seqlengths[which(simul_chrs$chr==temp_island_locs$chr)]
+  temp_island_locs <- data.frame(chr=simul_locs[i,]$chr, pos=max(c(1,temp_island_locs$pos - floor(10^(runif(1, log10(5e2), log10(5e5))))  )):
+                                           min(c(temp_island_chr_seqlength,temp_island_locs$pos + floor(10^(runif(1, log10(5e2), log10(5e5)))) ))
+  )
+  temp_island_locs <- temp_island_locs[sample(1:nrow(temp_island_locs),
+                                              sample(ceiling(nrow(temp_island_locs)/1e4):ceiling(nrow(temp_island_locs)/1e2),1)),  ]
+  
+  simul_locs <- rbind(simul_locs, temp_island_locs)
+}
+
+simul_locs <- unique(simul_locs)
+for(i in unique(simul_locs$chr)){
+  which <- which(simul_locs$chr==i)
+  simul_locs[which,]$pos <- sort(simul_locs[which,]$pos)
+}
+
+## simulate random noise  
+simul_locs$pval <- 1
+for(i in 1:nrow(simul_locs)){
+  simul_locs$pval[i] <- t.test(rnorm(10),rnorm(10))$p.value
+}
+
+## add simulated DMRs
+simul_dmrs <- data.frame(chr=c(rep("chr1", 5),rep("chr2", 5)),
+                         start=c(c(10e6,40e6,50e6,55e6,80e6),c(10e6,20e6,25e6,30e6,35e6)),
+                         width=c(c(1e3,1e3,1e6,1e4,1e5),c(1e3,1e3,1e4,1e4,1e6) ),
+                         noise=c(rep(0.5,5), rep(0.25,5)))
+
+for(i in 1:nrow(simul_dmrs)){
+  
+  temp_island_locs <- data.frame(chr=simul_dmrs$chr[i], pos=(simul_dmrs$start[i]):(simul_dmrs$start[i] + simul_dmrs$width[i]))
+  temp_island_locs <- temp_island_locs[sample(1:nrow(temp_island_locs),
+                                              sample(ceiling(max(10,nrow(temp_island_locs)/1e3)):
+                                                       max(20,floor(nrow(temp_island_locs)/1e4)),1)),]
+  for(j in 1:nrow(temp_island_locs)){
+    temp_island_locs$pval[j] <- t.test(rnorm(10, mean = 0), rnorm(10, mean = 0))$p.value
+  }
+  
+  which <- sample(1:nrow(temp_island_locs), floor(nrow(temp_island_locs)*simul_dmrs$noise[i]))
+  which <- sort(which)
+  for(j in 1:length(which)){
+    temp_island_locs$pval[which[j]] <- t.test(rnorm(10, mean = 0), rnorm(10, mean = 2))$p.value
+  }
+  simul_locs <- rbind(simul_locs, temp_island_locs)
+}
+
+
+for(i in unique(simul_locs$chr)){
+  which <- which(simul_locs$chr == i)
+  simul_locs[which,] <- simul_locs[which,][order(simul_locs[which,]$pos),]
+  temp <- simul_locs[-which,]
+  simul_locs<- simul_locs[which,][which(!duplicated(simul_locs[which,]$pos)), ]
+  simul_locs <- rbind(simul_locs,temp)
+  
+}
+
+
+dmrscaler_output <- DMRscaler::dmrscaler(simul_locs,
+                                         locs_pval_cutoff = 0.05,
+                                         region_signif_cutoff = 0.05,
+                                         window_sizes = c(2,4,8,16,32,64),
+                                         region_signif_method = "bon",
+                                         window_type = "k_nearest",
+                                         output_type = "complete")
+
+```
+
