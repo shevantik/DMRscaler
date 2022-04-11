@@ -50,6 +50,7 @@ dmrscaler <- function(locs,
   total_locs <- nrow(locs)
 
   if(region_signif_method == "bonferroni"){
+    adjust_signif_scaling_factor <- nrow(locs)
     region_signif_cutoff <- region_signif_cutoff/nrow(locs)
   }
 
@@ -134,6 +135,7 @@ dmrscaler <- function(locs,
       } else {
         benj_yeku_signif_cutoff <- temp_df$benjamini.yekutieli[max(which(temp_df$bh_lt_crit))]
       }
+      adjust_signif_scaling_factor <- region_signif_cutoff / benj_yeku_signif_cutoff
     }
     ### END: Set up benjamini-yekutielie ###
 
@@ -202,9 +204,14 @@ dmrscaler <- function(locs,
 
       ### build dmrs
       #### add dmrs ranges
-      dmrs <- data.frame(start=numeric(),stop=numeric(),pval_region=numeric(), dmr_id=numeric() )
+      dmrs <- data.frame(start=numeric(),
+                         stop=numeric(),
+                         pval_region_raw=numeric(),
+                         pval_region_adj=numeric(),
+                         mean_cg_signif=numeric(),
+                         dmr_id=numeric() )
       dmr_counter <- 1
-      next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1,dmr_id=dmr_counter)
+      next_dmr <- data.frame(start=-1,stop=-1,pval_region_raw=-1,pval_region_adj=-1,mean_cg_signif=-1,dmr_id=dmr_counter)
       for(i in 1:nrow(chr_locs)){
         if(chr_locs$in_dmr[i]){
           if(next_dmr$start == -1){
@@ -214,7 +221,7 @@ dmrscaler <- function(locs,
             next_dmr$stop <- chr_locs$pos[i]
             dmrs <- rbind(dmrs, next_dmr)
             dmr_counter <- dmr_counter + 1
-            next_dmr <- data.frame(start=-1,stop=-1,pval_region=-1,dmr_id=dmr_counter )
+            next_dmr <- data.frame(start=-1,stop=-1,pval_region_raw=-1,pval_region_adj=-1,mean_cg_signif=-1,dmr_id=dmr_counter )
           }
         }
       }
@@ -232,8 +239,9 @@ dmrscaler <- function(locs,
             n <- window_loc_ranks[j]-1
             k <- j-1
           }
-          dmrs$pval_region[i] <- window_signif
-          ### ADD ADJUSTED PVALUE AS  WELL
+          dmrs$pval_region_raw[i] <- window_signif
+          dmrs$pval_region_adj[i] <- window_signif * adjust_signif_scaling_factor
+          dmrs$mean_cg_signif[i] <- -mean(log10(window_locs$pval))
         }
       }
       dmrs
