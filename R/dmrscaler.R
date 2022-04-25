@@ -128,7 +128,8 @@ dmrscaler <- function(locs,
       temp <- unname(unlist(benjimini_yekutieli_windows))
       temp <- temp[order(temp)]
       temp_df <- data.frame("benjamini-yekutieli"=temp,"rank"=1:length(temp))
-      temp_df$crit <- (region_signif_cutoff * temp_df$rank) / (length(which(locs$pval<1)) * sum(1/(1:length(which(locs$pval<1)))))
+      #temp_df$crit <- (region_signif_cutoff * temp_df$rank) / (length(which(locs$pval<1)) * sum(1/(1:length(which(locs$pval<1)))))
+      temp_df$crit <- (region_signif_cutoff * temp_df$rank) / (length(locs$pval) * sum(1/(1:length(locs$pval))))
       temp_df$bh_lt_crit <- temp_df$benjamini.yekutieli < temp_df$crit
       if(length(which(temp_df$bh_lt_crit))==0){
         benj_yeku_signif_cutoff <- 0
