@@ -1,11 +1,12 @@
-#' get_loc_fdr_table
+#' get_loc_fdr_pval
 #'
 #' @param mat matrix with samples on columns and locs on rows
-#' @param cases case indices or column names
-#' @param controls control indices or column names
+#' @param cases case column names
+#' @param controls control column names
 #' @param stat_test statistical test used for signifance estimation
 #' @param fdr false discover rate desired
 #' @param resolution number of bins to use for table
+#' @param return_table if set to TRUE returns table of FDR values instead of single value
 #'
 #' @importFrom foreach foreach
 #' @importFrom foreach getDoParWorkers
@@ -15,7 +16,7 @@
 #'
 #' @export
 
-get_loc_fdr_table <- function(mat, cases, controls, stat_test, fdr=0.1, resolution=100){
+get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolution=100, return_table=FALSE){
   temp <- split(1:nrow(mat),cut(1:nrow(mat),max(getDoParWorkers(),2),labels=F))
   mat_subs_list <- list()
   for(i in 1:length(temp)){
@@ -66,7 +67,17 @@ get_loc_fdr_table <- function(mat, cases, controls, stat_test, fdr=0.1, resoluti
   temp <- hist(log10(pvals), temp_seq, plot=F)
   p_seq <- cumsum(temp$counts / sum(temp$counts))
 
-  return(data.frame(log10pval_cutoff=temp_seq[-length(temp_seq)], fdr=p_seq/tp_seq))
+  df <- data.frame(log10pval_cutoff=temp_seq[-length(temp_seq)], fdr=p_seq/tp_seq)
+  if(return_table){
+    return(df)
+  } else {
+    if(length(which(df$fdr <= fdr))==0){
+      warning("desired fdr rate not achieved, use less stringent threshold. Returning 0")
+      return(0)
+    }
+    pval_cutoff <- 10^df$log10pval_cutoff[max(which( df$fdr <= fdr ))]
+    return(pval_cutoff)
+  }
 
 }
 #

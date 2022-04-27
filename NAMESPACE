@@ -3,6 +3,8 @@
 export(dmrscaler)
 export(example_gene_anno_df)
 export(example_generate_dmr_tree)
+export(get_loc_fdr_pval)
 export(run_MWW)
 importFrom(foreach,"%dopar%")
 importFrom(foreach,foreach)
+importFrom(foreach,getDoParWorkers)
