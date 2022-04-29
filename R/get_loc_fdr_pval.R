@@ -75,7 +75,7 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
       warning("desired fdr rate not achieved, use less stringent threshold. Returning 0")
       return(0)
     }
-    pval_cutoff <- 10^df$log10pval_cutoff[max(which( df$fdr <= fdr ))]
+    pval_cutoff <- min(-log10(fdr), 10^df$log10pval_cutoff[max(which( df$fdr <= fdr ))])
     return(pval_cutoff)
   }
 
