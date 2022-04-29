@@ -33,7 +33,7 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
 
 
 
-  num_permutations <- max(10,ceiling((1/fdr) * 2))
+  num_permutations <- 20 # max(10,ceiling((1/fdr) * 2))
   if(num_permutations > choose(length(cases)+length(controls),length(cases) )){
     warning(paste("Warning: permutations required for accurate fdr estimation:",num_permutations,
                 ",number of possible permutations:", choose(length(cases)+length(controls),length(cases) ),
