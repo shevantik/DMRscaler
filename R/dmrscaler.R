@@ -50,10 +50,10 @@ dmrscaler <- function(locs,
   total_locs <- nrow(locs)
 
   if(region_signif_method == "bonferroni"){
-    #adjust_signif_scaling_factor <- nrow(locs)
-    #region_signif_cutoff <- region_signif_cutoff/nrow(locs)
-    adjust_signif_scaling_factor <- length(which(locs$pval < 1))
-    region_signif_cutoff <- region_signif_cutoff/length(which(locs$pval < 1))
+    adjust_signif_scaling_factor <- nrow(locs)
+    region_signif_cutoff <- region_signif_cutoff/nrow(locs)
+    # adjust_signif_scaling_factor <- length(which(locs$pval < 1))
+    # region_signif_cutoff <- region_signif_cutoff/length(which(locs$pval < 1))
   }
 
   # organize locs into list of dataframes where each dataframe is from a unique chr
