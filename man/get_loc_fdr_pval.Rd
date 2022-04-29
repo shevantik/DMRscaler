@@ -17,9 +17,9 @@ get_loc_fdr_pval(
 \arguments{
 \item{mat}{matrix with samples on columns and locs on rows}
 
-\item{cases}{case indices or column names}
+\item{cases}{case column names}
 
-\item{controls}{control indices or column names}
+\item{controls}{control column names}
 
 \item{stat_test}{statistical test used for signifance estimation}
 

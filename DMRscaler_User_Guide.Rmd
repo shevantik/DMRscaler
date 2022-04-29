@@ -128,7 +128,7 @@ ToDo: This can take
 ```{r}
 dmrscaler_result <- DMRscaler::dmrscaler(locs=locs,
                                          locs_pval_cutoff = 0.01,
-                                         region_signif_method = "ben",
+                                         region_signif_method = "bon",
                                          region_signif_cutoff = 0.05,
                                          window_type = "k_nearest",
                                          window_sizes = c(2,4,8,16,32,64,128,256),

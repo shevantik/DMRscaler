@@ -19,6 +19,7 @@
 get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolution=100, return_table=FALSE){
   temp <- split(1:nrow(mat),cut(1:nrow(mat),max(getDoParWorkers(),2),labels=F))
   mat_subs_list <- list()
+  mat <- as.matrix(mat)
   for(i in 1:length(temp)){
     mat_subs_list[[i]] <- mat[temp[[i]],]
   }
@@ -32,7 +33,7 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
 
 
 
-  num_permutations <- ceiling((1/fdr) * 2)
+  num_permutations <- max(10,ceiling((1/fdr) * 2))
   if(num_permutations > choose(length(cases)+length(controls),length(cases) )){
     warning(paste("Warning: permutations required for accurate fdr estimation:",num_permutations,
                 ",number of possible permutations:", choose(length(cases)+length(controls),length(cases) ),
@@ -42,7 +43,10 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
   } else {
     perms <- matrix(nrow=num_permutations, ncol=length(cases))
     for(i in 1:nrow(perms)){
-      perms[i,] <- sample(1:length(c(cases,controls)),length(cases))
+      #perms[i,] <- sample(1:length(c(cases,controls)),length(cases))
+      ## ensure balanced permutations
+      perms[i,] <- c(sample(cases, floor(length(cases)/2)),
+                     sample(controls, ceiling(length(cases)/2)))
     }
   }
 
