@@ -54,7 +54,7 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
 
   pvals <- foreach(i = 1:nrow(perms), .combine="cbind") %dopar% {
     g1 <- perms[i,]
-    g2 <- which(!is.element(1:length(c(cases,controls)),perms[i,]))
+    g2 <- c(cases,controls)[which(!is.element(c(cases,controls),perms[i,]))]
     temp_p <- numeric(length = nrow(mat))
     for(j in 1:nrow(mat)){
       temp_p[j] <- stat_test(mat[j,g1],mat[j,g2])$p.value
