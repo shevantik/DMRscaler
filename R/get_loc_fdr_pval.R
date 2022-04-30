@@ -41,12 +41,21 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
     perms <- combn(length(cases)+length(controls), length(cases))
     perms <- t(perms[,1:floor(ncol(perms)/2)])
   } else {
-    perms <- matrix(nrow=num_permutations, ncol=length(cases))
+    perms <- matrix(nrow=num_permutations, ncol=min(length(cases),length(controls)) )
     for(i in 1:nrow(perms)){
       #perms[i,] <- sample(1:length(c(cases,controls)),length(cases))
       ## ensure balanced permutations
-      perms[i,] <- c(sample(cases, floor(length(cases)/2)),
-                     sample(controls, ceiling(length(cases)/2)))
+      if(length(cases) <= length(controls)){
+        perms[i,] <- c(sample(cases, floor(length(cases)/2)),
+                       sample(controls, ceiling(length(cases)/2)))
+      } else {
+        perms[i,] <- c(sample(controls, floor(length(controls)/2)),
+                       sample(cases, ceiling(length(controls)/2)))
+      }
+
+
+
+
     }
   }
 
