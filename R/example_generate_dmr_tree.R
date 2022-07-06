@@ -40,6 +40,7 @@ example_generate_dmr_tree <- function(dmrscaler_result, layer, chr, start, stop 
     upper <- x_full_node_set[[j]]
 
     lower_gr <- lower[[1]]$grange
+    if(length(lower) < 2){next}
     for(i in 2:length(lower)){
       lower_gr <- c(lower_gr, lower[[i]]$grange)
     }

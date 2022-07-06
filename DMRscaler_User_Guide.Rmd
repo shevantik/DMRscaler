@@ -60,8 +60,8 @@ gse <- getGEO("GSE149960", GSEMatrix = TRUE)
 phen <- gse$GSE149960_series_matrix.txt.gz@phenoData@data
 rm(gse)
 
-## get methylation data as idat files (NOTE: this saves files locally in working directory, unpacked size is 411 Mb)
-## unpacked size is 411 Mb
+## get methylation data as idat files (NOTE: this saves files locally in working directory,
+## unpacked size is 411 Mb)
 if(!dir.exists("GSE149960/idat")){
   ## note: some people have issues using GEOquery to download
   ##       if this is the case, manually downloading into the data
@@ -109,7 +109,8 @@ if(!require("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")){
 controls <- grep("control",phen$title)
 cases <- grep("hgps", phen$title)
 locs <- getLocations(GRset.funnorm)
-locs <- data.frame("names"=locs@ranges@NAMES, "pos"=locs@ranges@start, "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
+locs <- data.frame("names"=locs@ranges@NAMES, "pos"=locs@ranges@start,
+                   "chr" = rep(locs@seqnames@values, locs@seqnames@lengths))
 B <- getBeta(GRset.funnorm)
 ```
 
@@ -146,9 +147,17 @@ locs$chr <- as.factor(locs$chr)
 locs$scoring_values <- mwr$p_val
 locs$pval <- mwr$p_val
 
-## get_loc_fdr_pval permutations can take a while... consider using more liberal fdr threshold for estimation of pval_cutoff OR manually setting pval_cutoff. 
-pcut_table <- get_loc_fdr_pval(B, cases,controls, wilcox.test, fdr=0.05, return_table = T)
-pval_cutoff <- 0.05
+## get_loc_fdr_pval permutations can take a while... consider using more liberal fdr
+## threshold for estimation of pval_cutoff or manually setting pval_cutoff. 
+fdr <- 0.2
+pcut_table <- get_loc_fdr_pval(B, cases,controls, wilcox.test, fdr=fdr, return_table = T)
+pvals_below_fdr_cut <- pcut_table$log10pval_cutoff[which(pcut_table$fdr <= fdr)]
+if(length(pvals_below_fdr_cut)==0 ){
+  warning("desired cpg level fdr not achieved at any pvalue threshold, consider using more liberal fdr cutoff")
+}
+pval_cutoff <- 10^max(pcut_table$log10pval_cutoff[which(pcut_table$fdr <= fdr)])
+print(paste("p-value cutoff set to ", signif(pval_cutoff,2), sep=""))
+
 ```
 
 
@@ -157,18 +166,19 @@ Uses significance values associated with each CG location and the values from th
 ToDo: This can take   
 ```{r}
 dmrscaler_result <- DMRscaler::dmrscaler(locs=locs,
-                                         locs_pval_cutoff = 0.01,
-                                         region_signif_method = "bon",
+                                         locs_pval_cutoff = pval_cutoff,
+                                         region_signif_method = "ben",
                                          region_signif_cutoff = 0.05,
                                          window_type = "k_nearest",
-                                         window_sizes = c(2,4,8,16,32,64,128,256),
+                                         window_sizes = c(2,4,8,16,32,64,128),
                                          output_type = "complete")
-
+head(dmrscaler_result[[length(dmrscaler_result)]])
 ```
 
 ## Choose an example region to look at
 ```{r}
-example_region <- data.frame(chr="chr7",start=155616381, stop=159033499, stringsAsFactors = FALSE)
+example_region <- data.frame(chr="chr7",start=155616381, stop=159033499,
+                             stringsAsFactors = FALSE)
 ```
 
 ```{r hilbert-curve-dependencies, message=FALSE}
@@ -194,18 +204,23 @@ hc_size <- -log10(hc_points$pval) / max(-log10(hc_points$pval))
 
 #  hc_size <- hc_points$scoring_values / fdrscaler
 hc <- HilbertCurve(s=1,e=hc_max, level = level, reference = F, title = example_region$chr)
-hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*2, "mm"),gp = gpar(col = hc_col, fill = hc_col))
-hc_polygon(hc, x1 = min(which(hc_points$pos >= example_region$start)), x2 = max(which(hc_points$pos <= example_region$stop)) )
+hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*2, "mm"),
+          gp = gpar(col = hc_col, fill = hc_col))
+hc_polygon(hc, x1 = min(which(hc_points$pos >= example_region$start)),
+           x2 = max(which(hc_points$pos <= example_region$stop)) )
 
 ### now looking only at the specified region
 level = 4
-hc_points <- locs[which(locs$chr== example_region$chr & locs$pos >= example_region$start & locs$pos <= example_region$stop ),]
+hc_points <- locs[which(locs$chr== example_region$chr & 
+                          locs$pos >= example_region$start & 
+                          locs$pos <= example_region$stop ),]
 hc_max <- nrow(hc_points)
 hc_col <- col_fun(-log10(hc_points$pval))
 hc_size <- -log10(hc_points$pval) / max(-log10(hc_points$pval))
 
 hc <- HilbertCurve(s=1,e=hc_max, level = level, reference = F, title = example_region$chr)
-hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*4, "mm"),gp = gpar(col = hc_col, fill = hc_col))
+hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*4, "mm"),
+          gp = gpar(col = hc_col, fill = hc_col))
 ```
 
 ## Explore some features of the data
@@ -219,8 +234,13 @@ if(!require("networkD3", quietly = TRUE )){
 ```
 
 ```{r dmr-structure-visual, fig.height=6, fig.width = 7}
-dmr_tree <- example_generate_dmr_tree(dmrscaler_result = dmrscaler_result, layer=length(dmrscaler_result), chr=example_region$chr, start = example_region$start, stop = example_region$stop)
-diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke = "black", linkColour = "black", opacity = 1 )
+dmr_tree <- example_generate_dmr_tree(dmrscaler_result = dmrscaler_result,
+                                      layer=length(dmrscaler_result),
+                                      chr=example_region$chr,
+                                      start = example_region$start,
+                                      stop = example_region$stop)
+diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold",
+                nodeStroke = "black", linkColour = "black", opacity = 1 )
 
 ```
 
