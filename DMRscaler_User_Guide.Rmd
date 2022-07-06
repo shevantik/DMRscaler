@@ -36,6 +36,7 @@ if(!require("devtools", quietly = TRUE )){
 }
 if(!require("DMRscaler")){
   devtools::install(path_to_DMRscaler)
+  library("DMRscaler")
 }
 ```
 
@@ -43,7 +44,14 @@ if(!require("DMRscaler")){
 ## Example Dataset Setup
 We will use data from GSE149960 from (Köhler F. et al, 2020) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
 ```{r get-dataset-dependencies, message=FALSE}
-library("GEOquery")
+if(!require("BiocManager", quietly = TRUE )){
+  install.packages("BiocManager")
+  library("BiocManager")
+}
+if(!require("GEOquery")){
+  BiocManager::install("GEOquery")
+  library("GEOquery")
+}
 ```
 
 ```{r get-dataset, results='hide'}
@@ -66,12 +74,17 @@ idat_files <- list.files("GSE149960/idat", pattern = "idat.gz$", full = TRUE)
 sapply(idat_files, gunzip, overwrite = TRUE); rm(idat_files)
 ```
 
-
-
 ##  Preprocessing
 Preprocessing of idat files is done with minfi here.
 ```{r preprocessing-dependencies, message=FALSE}
-library("minfi")
+if(!require("minfi")){
+  BiocManager::install("minfi")
+  library("minfi")
+}
+if(!require("IlluminaHumanMethylationEPICmanifest")){
+  BiocManager::install("IlluminaHumanMethylationEPICmanifest")
+  library("IlluminaHumanMethylationEPICmanifest")
+}
 ```
 
 ```{r preprocessing}
@@ -84,10 +97,12 @@ GRset.funnorm <- dropLociWithSnps(GRset.funnorm, snps=c("SBE", "CpG"), maf=0);rm
 rm(idats_dir)
 ```
 
-
 ## Set up for DMRscaler
 ```{r data-setup-dependencies, message=FALSE}
-library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
+if(!require("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")){
+  BiocManager::install("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
+  library("IlluminaHumanMethylationEPICanno.ilm10b4.hg19")
+}
 ```
 
 ```{r data_setup}
@@ -98,15 +113,26 @@ locs <- data.frame("names"=locs@ranges@NAMES, "pos"=locs@ranges@start, "chr" = r
 B <- getBeta(GRset.funnorm)
 ```
 
-
 ## Run statistical tests and permutations to feed into DMRscaler method
 We use the non-parametric wilcox test for individual CG significance calculations and permutation of these significance values for estimating window level significance. 
 
 ```{r DMRscaler-set-up-dependencies, message=FALSE}
-library("doParallel")
-library("rlang")
-library("dplyr")
-library("foreach")
+if(!require("doParallel", quietly = TRUE )){
+  install.packages("doParallel")
+  library("doParallel")
+}
+if(!require("rlang", quietly = TRUE )){
+  install.packages("rlang")
+  library("rlang")
+}
+if(!require("dplyr", quietly = TRUE )){
+  install.packages("dplyr")
+  library("dplyr")
+}
+if(!require("foreach", quietly = TRUE )){
+  install.packages("foreach")
+  library("foreach")
+}
 ```
 
 ```{r precompute p-values}
@@ -119,6 +145,10 @@ mwr <- DMRscaler::run_MWW(control_indices = controls ,
 locs$chr <- as.factor(locs$chr)
 locs$scoring_values <- mwr$p_val
 locs$pval <- mwr$p_val
+
+## get_loc_fdr_pval permutations can take a while... consider using more liberal fdr threshold for estimation of pval_cutoff OR manually setting pval_cutoff. 
+pcut_table <- get_loc_fdr_pval(B, cases,controls, wilcox.test, fdr=0.05, return_table = T)
+pval_cutoff <- 0.05
 ```
 
 
@@ -142,8 +172,14 @@ example_region <- data.frame(chr="chr7",start=155616381, stop=159033499, strings
 ```
 
 ```{r hilbert-curve-dependencies, message=FALSE}
-library(circlize)
-library(HilbertCurve)
+if(!require("circlize", quietly = TRUE )){
+  install.packages("circlize")
+  library("circlize")
+}
+if(!require("HilbertCurve", quietly = TRUE )){
+  BiocManager::install("HilbertCurve")
+  library("HilbertCurve")
+}
 ```
 
 ```{r, fig.width = 4, fig.height=4}
@@ -176,7 +212,10 @@ hc_points(hc, x1 = 1:nrow(hc_points), np = NULL, pch=15, size = unit(hc_size*4, 
 DMRscaler defines differential methylation features iteratively, expanding the size of the window for aggregating on at each step
 this procedure allows a hierarchical structure to describe a region enriched in differntially methylated CpGs. We look at our example region here 
 ```{r dmr-structure-visual-dependencies, results='hide'}
-library(networkD3)
+if(!require("networkD3", quietly = TRUE )){
+  install.packages("networkD3")
+  library("networkD3")
+}
 ```
 
 ```{r dmr-structure-visual, fig.height=6, fig.width = 7}
@@ -187,8 +226,14 @@ diagonalNetwork(List = dmr_tree, fontSize = 12, fontFamily = "bold", nodeStroke 
 
 Next we can look at the region using the Gviz package
 ```{r genenomic-range-visual-dependencies}
-library(Gviz)
-library(biomaRt)
+if(!require("Gviz")){
+  BiocManager::install("Gviz")
+  library("Gviz")
+}
+if(!require("biomaRt")){
+  BiocManager::install("biomaRt")
+  library("biomaRt")
+}
 ```
 
 ```{r genomic-range-visual, fig.width = 7, fig.height=5}

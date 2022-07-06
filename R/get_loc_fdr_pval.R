@@ -74,7 +74,6 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
   tp_temp <- hist(log10(tp_pval), temp_seq, plot=F)
   tp_seq <- cumsum(tp_temp$counts / sum(tp_temp$counts))
 
-  temp_seq <- seq(floor(min(log10(c(pvals, as.vector(pvals))))),0,length.out= resolution)
   temp <- hist(log10(pvals), temp_seq, plot=F)
   p_seq <- cumsum(temp$counts / sum(temp$counts))
 

@@ -11,7 +11,7 @@ get_loc_fdr_pval(
   stat_test,
   fdr = 0.1,
   resolution = 100,
-  return_table = FALSE
+  return_table = TRUE
 )
 }
 \arguments{
