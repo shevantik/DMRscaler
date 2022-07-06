@@ -41,7 +41,7 @@ if(!require("DMRscaler")){
 
 
 ## Example Dataset Setup
-We will use data from GSE149960 from (REFERENCE) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
+We will use data from GSE149960 from (Köhler F. et al, 2020) with DNA methylation from fibroblasts from progeria patients and controls measured on the Illumina methylation EPIC array.  
 ```{r get-dataset-dependencies, message=FALSE}
 library("GEOquery")
 ```

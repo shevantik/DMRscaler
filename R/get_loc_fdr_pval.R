@@ -16,7 +16,7 @@
 #'
 #' @export
 
-get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolution=100, return_table=FALSE){
+get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolution=100, return_table=TRUE){
   temp <- split(1:nrow(mat),cut(1:nrow(mat),max(getDoParWorkers(),2),labels=F))
   mat_subs_list <- list()
   mat <- as.matrix(mat)
@@ -33,7 +33,11 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
 
 
 
-  num_permutations <- 20 # max(10,ceiling((1/fdr) * 2))
+  num_permutations <- max(10, ceiling((1/fdr) * 2))
+  if( num_permutations / getDoParWorkers() > 4 ){
+    warning( paste(num_permutations," permutations across ", getDoParWorkers(), "worker node.. this may take a while",sep=""))
+  }
+
   if(num_permutations > choose(length(cases)+length(controls),length(cases) )){
     warning(paste("Warning: permutations required for accurate fdr estimation:",num_permutations,
                 ",number of possible permutations:", choose(length(cases)+length(controls),length(cases) ),
@@ -43,18 +47,12 @@ get_loc_fdr_pval <- function(mat, cases, controls, stat_test, fdr=0.1, resolutio
   } else {
     perms <- matrix(nrow=num_permutations, ncol=min(length(cases),length(controls)) )
     for(i in 1:nrow(perms)){
-      #perms[i,] <- sample(1:length(c(cases,controls)),length(cases))
-      ## ensure balanced permutations
       if(length(cases) <= length(controls)){
-        perms[i,] <- c(sample(cases, floor(length(cases)/2)),
-                       sample(controls, ceiling(length(cases)/2)))
+        perms[i,] <- sample(c(cases,controls), length(cases))
+
       } else {
-        perms[i,] <- c(sample(controls, floor(length(controls)/2)),
-                       sample(cases, ceiling(length(controls)/2)))
+        perms[i,] <- sample(c(controls,cases), length(controls))
       }
-
-
-
 
     }
   }
