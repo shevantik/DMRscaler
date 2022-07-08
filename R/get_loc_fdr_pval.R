@@ -12,7 +12,7 @@
 #' @importFrom foreach getDoParWorkers
 #' @importFrom foreach %dopar%
 #'
-#' @return dmrscaler returns a list of dmrs at each layer
+#' @return get_loc_fdr_pval returns a dataframe of pvalue cutoffs and corresponding fdr rate at those cutoffs based on permutation. Uses 2x 1/fdr permutations for estimation
 #'
 #' @export
 
